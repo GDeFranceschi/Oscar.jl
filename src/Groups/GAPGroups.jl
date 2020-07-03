@@ -174,13 +174,13 @@ end
 
 """
     one(G::Group) -> x::GAPGroupElem{typeof(G)}
-Return the one element of the group G.
+Return the identity of the group `G`.
 """
 Base.one(x::GAPGroup) = group_element(x, GAP.Globals.Identity(x.X))
 
 """
     one(x::GAPGroupElement{T}) -> x::GAPGroupElem{T}
-Return the one element of the parent of x.
+Return the identity of the parent group of x.
 """
 Base.one(x::GAPGroupElem) = one(parent(x))
 one!(x::GAPGroupElem) = one(parent(x))
