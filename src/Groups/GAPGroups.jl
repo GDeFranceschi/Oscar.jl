@@ -241,16 +241,16 @@ end
 # need this function just for the iterator
 Base.length(x::GAPGroup)::Int = order(x)
 
-"""
-    perm(L::AbstractVector{<:Integer})
-Return the permutation `x` sending `i` into `L[i]` for every `i`. `L` must contain exactly one time every integer from 1 to n for n = length(`L`).
-The parent of `x` is set as Sym(n), where n is the largest moved point of `x`.
-"""
 # FIXME: clashes with AbstractAlgebra.perm method
 #function perm(L::AbstractVector{<:Base.Integer})
 #   return PermGroupElem(symmetric_group(length(L)), GAP.Globals.PermList(GAP.julia_to_gap(L)))
 #end
 # FIXME: use name gap_perm for now
+"""
+    gap_perm(L::AbstractVector{<:Integer})
+Return the permutation `x` sending `i` into `L[i]` for every `i`. `L` must contain exactly one time every integer from 1 to `n` for `n` = length(`L`).
+The parent of `x` is set as Sym(`n`).
+"""
 function gap_perm(L::AbstractVector{<:Base.Integer})
   return PermGroupElem(symmetric_group(length(L)), GAP.Globals.PermList(GAP.julia_to_gap(L)))
 end
@@ -259,8 +259,8 @@ end
 """
     perm(G::PermGroup, L::AbstractVector{<:Integer})
     (G::PermGroup)(L::AbstractVector{<:Integer})
-Return the permutation `x` sending `i` into `L[i]` for every `i`. `L` must contain exactly one time every integer from 1 to n for n = length(`L`).
-The parent of `x` is `G`. If `x` is not in `G`, return ERROR.
+Return the permutation `x` sending `i` into `L[i]` for every `i`. `L` must contain exactly one time every integer from 1 to `n` for `n` = length(`L`).
+The parent of `x` is `G`. If `x` is not contained in `G`, an ERROR is returned. For `gap_perm`, the parent group of `x` is set as Sym(`n`), where `n` is the largest moved point of `x`.
 """
 function perm(g::PermGroup, L::AbstractVector{<:Base.Integer})
    x = GAP.Globals.PermList(GAP.julia_to_gap(L))
@@ -282,11 +282,12 @@ end
 # takes as input a list of arrays (not necessarly disjoint)
 """
     cperm(L::AbstractVector{<:Integer}...)
+    cperm(G::PermGroup, L::AbstractVector{<:Integer}...)
 For given lists of positive integers `[a_1, a_2, ..., a_n],[b_1, b_2, ... , b_m], ...` return the
 permutation `x = (a_1,a_2,...,a_n)(b_1,b_2,...,b_m)...`. The array `[n,n+1,...,n+k]` can be replaced by `n:n+k`.
   
-If a list is empty or contains duplicates or holes, it fails.
-The parent of `x` is set as Sym(n), where n is the largest moved point of `x`.
+If a list is empty or contains duplicates, it fails.
+The parent of `x` is `G`. If `x` is not contained in `G`, an ERROR is returned. If `G` is not specified, then the parent of `x` is set as Sym(`n`), where `n` is the largest moved point of `x`.
 """
 function cperm(L::AbstractVector{<:Base.Integer}...)
    if length(L)==0
@@ -299,15 +300,6 @@ end
 # cperm stays for "cycle permutation", but we can change name if we want
 # takes as input a list of arrays (not necessarly disjoint)
 # WARNING: we allow e.g. PermList([2,3,1,4,5,6]) in Sym(3)
-
-"""
-    cperm(G::PermGroup, L::Union{Array{Int64,1},UnitRange{Int64}}...)
-For given lists of positive integers `[a_1, a_2, ..., a_n],[b_1, b_2, ... , b_m], ...` return the
-permutation `(a_1,a_2,...,a_n)(b_1,b_2,...,b_m)...`. The array `[n,n+1,...,n+k]` can be replaced by `n:n+k`.
-  
-If a list is empty or contains duplicates or holes, it fails.
-The parent of `x` is G. If `x` is not in G, it return ERROR.
-"""
 function cperm(g::PermGroup,L::AbstractVector{<:Base.Integer}...)
    if length(L)==0
       return one(g)
