@@ -156,6 +156,26 @@ This works also if the argument is not in the range `1:n`; in such a case, the o
     The multiplication between permutations works from the left to the right. So, if `x` and `y` are permutations and `n` is an integer, then `(x*y)(n) = (y(x(n))`, NOT `x(y(n))`.
 
 
+## Polycyclic groups
 
+Julia has the following functions that allow to generate polycyclic groups:
+```@docs
+abelian_group(::Type{T}, v::Vector{Int}) where T <: GAPGroup
+cyclic_group
+dihedral_group
+quaternion_group
+```
+!!! warning
+    The type need to be specified in the input of the function `abelian_group`, otherwise a group of type `GrpAbFinGen` is returned.
 
+The generators of a polycyclic group are displayed as `f1`, `f2`, `f3`, etc., and every element of a polycyclic group is displayed as product of such generators.
 
+  **Example:**
+```jldoctest
+julia> G=abelian_group(PcGroup, [2,4]);
+julia> G[1], G[2]
+(f1, f2)
+julia> G[2]*G[1]
+f1*f2
+```
+Anyway, recall that variables named `f1`, `f2`, etc. are not initialized! To get the generators of the group `G`, one has to refer to them as `G[1]`, `G[2]`, etc.

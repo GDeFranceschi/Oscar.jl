@@ -78,6 +78,10 @@ end
 
 cyclic_group(n::Int) = cyclic_group(PcGroup, n)
 
+"""
+    cyclic_group(::Type{T}, n::Int)
+Return the cyclic group of order `n` and type `T`. If the type is not specified, the group is returned of type `PcGroup`.
+"""
 function cyclic_group(::Type{T}, n::Int) where T <: GAPGroup
   return T(GAP.Globals.CyclicGroup(_gap_filter(T), n))
 end
@@ -182,7 +186,7 @@ end
 """
     dihedral_group(n::Int)
     dihedral_group(::Type{T}, n::Int)
-Return the dihedral group of order `n` of type `T`, where `T` is in {``PcGroup``,``PermGroup``,``FPGroup``}. In the first case, the type is set as ``PcGroup``.
+Return the dihedral group of order `n` of type `T`, where `T` is in {`PcGroup`,`PermGroup`,`FPGroup`}. In the first case, the type is set as `PcGroup`.
 """
 dihedral_group(n::Int) = dihedral_group(PcGroup, n)
 
@@ -194,7 +198,7 @@ end
 """
     quaternion_group(n::Int)
     quaternion_group(::Type{T}, n::Int)
-Return the quaternion group of order `n` of type `T`, where `T` is in {``PcGroup``,``PermGroup``,``FPGroup``,``MatrixGroup``}. In the first case, the type is set as ``PcGroup``.
+Return the quaternion group of order `n` of type `T`, where `T` is in {`PcGroup`,`PermGroup`,`FPGroup`,`MatrixGroup`}. In the first case, the type is set as `PcGroup`.
 """
 quaternion_group(n::Int) = quaternion_group(PcGroup, n)
 
