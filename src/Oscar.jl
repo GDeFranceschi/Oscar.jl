@@ -181,6 +181,7 @@ include("Rings/mpoly-graded.jl")
 include("Modules/FreeModules-graded.jl")
 include("Polymake/Ineq.jl")
 include("Polymake/NmbThy.jl")
+include("Groups/julia_GAP.jl")
 
 if is_dev
   include("../examples/ModStdNF.jl")
