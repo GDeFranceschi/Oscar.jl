@@ -1,4 +1,4 @@
-import Hecke: order, base_ring, elements
+import Hecke: order, base_ring, elements, transpose
 import GAP: FFE
 
 
@@ -181,6 +181,17 @@ end
 function Base.:^(H::MatrixGroup, y::TempMatType)
    F = base_ring(parent(y))
    return MatrixGroup(H.X ^ MatHeckeToGap(y,F))
+end
+
+function transpose(x::GAPGroupElem{MatrixGroup})
+   xgap = GAP.Globals.TransposedMat(x.X)
+   if GAP.Globals.IN(xgap,parent(x).X)
+      return group_element(parent(x),xgap)
+   else
+      n=GAP.Globals.DimensionsMat(x.X)[1]
+      F=base_ring(x)
+      return group_element(GL(n,Int64(order(F))),xgap)
+   end
 end
 
 #########################################################################
