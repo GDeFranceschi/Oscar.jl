@@ -135,6 +135,18 @@ function rand_pseudo(G::GAPGroup)
    return group_element(G,s)
 end
 
+function _maxgroup(x::PermGroup, y::PermGroup)
+   if GAP.Globals.IsSubset(x.X, y.X)
+     return x
+   elseif GAP.Globals.IsSubset(y.X, x.X)
+     return y
+   else
+      d1=x.deg
+      d2=y.deg
+      S=symmetric_group(max(d1,d2))
+      return sub(S,cat(gens(x),gens(y); dims=1))[1]
+   end
+end
 
 function _maxgroup(x::T, y::T) where T <: GAPGroup
    if GAP.Globals.IsSubset(x.X, y.X)

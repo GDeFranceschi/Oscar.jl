@@ -274,7 +274,7 @@ end
 Base.hash(x::GroupDoubleCoset) = 0 # FIXME
 
 function ==(x::GroupDoubleCoset, y::GroupDoubleCoset)
-   return x.H == y.H && x.K==y.K
+   return x.X==y.X
 end
 
 function Base.show(io::IO, x::GroupDoubleCoset)
@@ -289,7 +289,7 @@ end
 """
     double_coset(H::Group, x::GAPGroupElem, K::Group)
     *(H::Group, x::GAPGroupElem, K::Group)
-returns the double coset `HxK`.
+Return the double coset `HxK`.
 """
 function double_coset(G::T, g::GAPGroupElem{T}, H::T) where T<: GAPGroup
    # TODO: enforce that G, H have same type
@@ -355,19 +355,19 @@ Base.rand(C::GroupDoubleCoset) = group_element(C.G, GAP.Globals.Random(C.X))
 
 """
     representative(C::GroupDoubleCoset)
-if `C` = `HxK`, returns `x`.
+If `C` = `HxK`, return `x`.
 """
 representative(C::GroupDoubleCoset) = C.repr
 
 """
     left_acting_group(C::GroupDoubleCoset)
-if `C` = `HxK`, returns `H`
+If `C` = `HxK`, return `H`
 """
 left_acting_group(C::GroupDoubleCoset) = C.H
 
 """
     left_acting_group(C::GroupDoubleCoset)
-if `C` = `HxK`, returns `K`
+If `C` = `HxK`, return `K`
 """
 right_acting_group(C::GroupDoubleCoset) = C.K
 
