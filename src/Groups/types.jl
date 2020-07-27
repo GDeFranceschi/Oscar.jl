@@ -54,6 +54,7 @@ export
     elem_type,
     FPGroup,
     FPGroupElem,
+    GAPGroupElem,
     MatrixGroup,
     MatrixGroupElem,
     PcGroup,

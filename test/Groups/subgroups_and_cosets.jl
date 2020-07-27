@@ -222,14 +222,27 @@ end
    dc1 = double_coset(H, H[1]*x, K)
    @test representative(dc) != representative(dc1)
    @test dc == dc1
+   @test Set(elements(dc))==Set([h*x*k for h in H for k in K])
    L = double_cosets(G,H,K)
    @test length(L)==3
    @test left_acting_group(L[1])==H
    @test Set([G([4,5,1,2,3]), G([3,4,5,1,2]), G([2,3,4,5,1])])==Set(intersect(dc, sub(G,[x])[1]) )
+   @test L==double_cosets(G,H,K; NC=true)
+   Lrs = double_cosets(G,H,K; OS=true)
+   @test [representative(l) for l in L]==[l[1] for l in Lrs]
+   @test [order(l) for l in L]==[l[2] for l in Lrs]
    lc = left_coset(H,one(G))
    @test Set(intersect(lc,H))==Set(elements(H))
    lc = left_coset(H,x)
+   rc = right_coset(H,x)
    @test intersect(lc,H)==[]
+   @test Set(intersect(rc,dc))==Set(rc)
+   @test intersect(lc,dc,H)==[]
+   R=sub(G,[cperm([4,5])])[1]
+   dc1 = double_coset(K,x,R^x)
+   dc2 = double_coset(R,x,K^x)
+   @test dc1 != dc2
+   @test Set(dc1)==Set(dc2)
 end
 
 @testset "Predicates for groups" begin

@@ -3,6 +3,8 @@ export
     double_coset,
     double_cosets,
     elements,
+    GroupCoset,
+    GroupDoubleCoset,
     isbicoset,
     isleft,
     isright,
@@ -260,7 +262,7 @@ end
 
 """
     GroupDoubleCoset{T<: Group, S <: GAPGroupElem}
-Group double coset. It is displayed as `H * x * K`, where `H` and `K` are subgroups of a group `G` and `x` is an element of `G`. Two double cosets are equal if, and only if, they contain the same elements.
+Group double coset. It is displayed as `H * x * K`, where `H` and `K` are subgroups of a group `G` and `x` is an element of `G`. Two double cosets are equal if, and only if, they contain the same elements and they have the same acting groups.
 """
 # T=type of the group, S=type of the element
 struct GroupDoubleCoset{T <: GAPGroup, S <: GAPGroupElem}
@@ -306,10 +308,19 @@ end
 Base.:*(H::GAPGroup, g::GAPGroupElem, K::GAPGroup) = double_coset(H,g,K)
 
 """
-    double_cosets(G::T, H::T, K::T; NC=false) where T<: GAPGroup
-Return the array of all the double cosets `HxK` for `x` in `G`. If `NC` = `true`, do not check whether `H` and `K` are subgroups of `G`.
+    double_cosets(G::T, H::T, K::T; NC=false, OS=false) where T<: GAPGroup
+Return the array of all the double cosets `HxK` for `x` in `G`. If `NC` = `true`, do not check whether `H` and `K` are subgroups of `G`. If `OC` = `true`, do not compute the double cosets, indeed return only an array of pairs `(r,n)`, where `r` is the representative and `n` is the size of the double coset.
 """
-function double_cosets(G::T, H::T, K::T; NC=false) where T<: GAPGroup
+function double_cosets(G::T, H::T, K::T; NC=false, OS=false) where T<: GAPGroup
+   if OS
+      dcs = GAP.Globals.DoubleCosetRepsAndSizes(G.X,H.X,K.X)
+      res = Vector{Tuple{GAPGroupElem{T},Int64}}(undef, length(dcs))
+      for i in 1:length(dcs)
+         r = group_element(G,dcs[i][1])
+         res[i] = (r,dcs[i][2])
+      end
+      return res
+   end
    if NC
       dcs = GAP.Globals.DoubleCosetsNC(G.X,H.X,K.X)
    else
