@@ -223,11 +223,25 @@ end
     GL = general_linear_group
 return the general linear group of dimension `n` over the field GF(`q`). It is returned of type `T` for `T` = `MatrixGroup` or `PermGroup`.
 """
-general_linear_group(n::Int, q::Int) = general_linear_group(MatrixGroup, n, q)
+function general_linear_group(::Type{T}, n::Int, F::FqNmodFiniteField) where T <: GAPGroup
+   q=Int(order(F))
+   if T==MatrixGroup
+      return T(GAP.Globals.GL(_gap_filter(T),n,q),F)
+   else
+      return T(GAP.Globals.GL(_gap_filter(T),n,q))
+   end
+end
+
+general_linear_group(n::Int, F::FqNmodFiniteField) = general_linear_group(MatrixGroup, n, F)
 
 function general_linear_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
-  return T(GAP.Globals.GL(_gap_filter(T),n, q))
+   a,p=ispower(q)
+   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   F=GF(p,a)[1]
+   return general_linear_group(T,n,F)
 end
+
+general_linear_group(n::Int, q::Int) = general_linear_group(MatrixGroup, n, q)
 
 """
     special_linear_group(n::Int, q::Int)
@@ -235,11 +249,25 @@ end
     SL = special_linear_group
 return the special linear group of dimension `n` over the field GF(`q`). It is returned of type `T` for `T` = `MatrixGroup` or `PermGroup`.
 """
-special_linear_group(n::Int, q::Int) = special_linear_group(MatrixGroup, n, q)
+function special_linear_group(::Type{T}, n::Int, F::FqNmodFiniteField) where T <: GAPGroup
+   q=Int(order(F))
+   if T==MatrixGroup
+      return T(GAP.Globals.SL(_gap_filter(T),n,q),F)
+   else
+      return T(GAP.Globals.SL(_gap_filter(T),n,q))
+   end
+end
+
+special_linear_group(n::Int, F::FqNmodFiniteField) = special_linear_group(MatrixGroup, n, F)
 
 function special_linear_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
-  return T(GAP.Globals.SL(_gap_filter(T), n, q))
+   a,p=ispower(q)
+   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   F=GF(p,a)[1]
+   return special_linear_group(T,n,F)
 end
+
+special_linear_group(n::Int, q::Int) = special_linear_group(MatrixGroup, n, q)
 
 """
     symplectic_group(n::Int, q::Int)
@@ -247,11 +275,26 @@ end
     Sp = symplectic_group
 return the special linear group of dimension `n` over the field GF(`q`), for `n` even. It is returned of type `T` for `T` = `MatrixGroup` or `PermGroup`.
 """
-symplectic_group(n::Int, q::Int) = symplectic_group(MatrixGroup, n, q)
+function symplectic_group(::Type{T}, n::Int, F::FqNmodFiniteField) where T <: GAPGroup
+   q=Int(order(F))
+   iseven(n) || throw(ArgumentError("dimension must be even"))
+   if T==MatrixGroup
+      return T(GAP.Globals.Sp(_gap_filter(T),n,q),F)
+   else
+      return T(GAP.Globals.Sp(_gap_filter(T),n,q))
+   end
+end
+
+symplectic_group(n::Int, F::FqNmodFiniteField) = symplectic_group(MatrixGroup, n, F)
 
 function symplectic_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
-  return T(GAP.Globals.Sp(_gap_filter(T), n, q))
+   a,p=ispower(q)
+   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   F=GF(p,a)[1]
+   return symplectic_group(T,n,F)
 end
+
+symplectic_group(n::Int, q::Int) = symplectic_group(MatrixGroup, n, q)
 
 """
     unitary_group(n::Int, q::Int)
@@ -259,11 +302,28 @@ end
     GU = unitary_group
 return the unitary group of dimension `n` over the field GF(`q^2`). It is returned of type `T` for `T` = `MatrixGroup` or `PermGroup`.
 """
-unitary_group(n::Int, q::Int) = unitary_group(MatrixGroup, n, q)
+function unitary_group(::Type{T}, n::Int, F::FqNmodFiniteField) where T <: GAPGroup
+   q=Int(order(F))
+   issquare(fmpz(q)) || throw(ArgumentError("The field must have even degree"))
+   q=Int(sqrt(q))
+   if T==MatrixGroup
+      return T(GAP.Globals.GU(_gap_filter(T),n,q),F)
+   else
+      return T(GAP.Globals.GU(_gap_filter(T),n,q))
+   end
+end
+
+unitary_group(n::Int, F::FqNmodFiniteField) = unitary_group(MatrixGroup, n, F)
 
 function unitary_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
-  return T(GAP.Globals.GU(_gap_filter(T), n, q))
+   a,p=ispower(q)
+   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   F=GF(p,a)[1]
+   return unitary_group(T,n,F)
 end
+
+unitary_group(n::Int, q::Int) = unitary_group(MatrixGroup, n, q)
+
 
 """
     special_unitary_group(n::Int, q::Int)
@@ -271,11 +331,27 @@ end
     SU = special_unitary_group
 return the special unitary group of dimension `n` over the field GF(`q^2`). It is returned of type `T` for `T` = `MatrixGroup` or `PermGroup`.
 """
-special_unitary_group(n::Int, q::Int) = special_unitary_group(MatrixGroup, n, q)
+function special_unitary_group(::Type{T}, n::Int, F::FqNmodFiniteField) where T <: GAPGroup
+   q=Int(order(F))
+   issquare(fmpz(q)) || throw(ArgumentError("The field must have even degree"))
+   q=Int(sqrt(q))
+   if T==MatrixGroup
+      return T(GAP.Globals.SU(_gap_filter(T),n,q),F)
+   else
+      return T(GAP.Globals.SU(_gap_filter(T),n,q))
+   end
+end
+
+special_unitary_group(n::Int, F::FqNmodFiniteField) = special_unitary_group(MatrixGroup, n, F)
 
 function special_unitary_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
-  return T(GAP.Globals.SU(_gap_filter(T), n, q))
+   a,p=ispower(q)
+   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   F=GF(p,a)[1]
+   return special_unitary_group(T,n,F)
 end
+
+special_unitary_group(n::Int, q::Int) = special_unitary_group(MatrixGroup, n, q)
 
 
 """
@@ -286,20 +362,38 @@ end
     GO = orthogonal_group
 return the orthogonal group of dimension `n` over the field GF(`q`) of type `e`, where `e` in {`+1`,`-1`} for `n` even and `e`=`0` for `n` odd. If `n` is odd, `e` can be omitted. It is returned of type `T` for `T` = `MatrixGroup` or `PermGroup`.
 """
+function orthogonal_group(::Type{T}, e::Int, n::Int, F::FqNmodFiniteField) where T <: GAPGroup
+   q=Int(order(F))
+   if isodd(n)
+      e==0 || throw(ArgumentError("Error, sign <e> must be 0 in odd dimension"))
+   else
+      e in (-1,+1) || throw(ArgumentError("Error, sign <e> must be -1, +1 in even dimension"))
+   end
+   if T==MatrixGroup
+      return T(GAP.Globals.GO(_gap_filter(T),e,n,q),F)
+   else
+      return T(GAP.Globals.GO(_gap_filter(T),e,n,q))
+   end
+end
+
+orthogonal_group(n::Int, F::FqNmodFiniteField) = orthogonal_group(MatrixGroup, 0, n, F)
+
+orthogonal_group(::Type{T}, n::Int, F::FqNmodFiniteField) where T <: GAPGroup = orthogonal_group(T, 0, n, F)
+
+orthogonal_group(e::Int, n::Int, F::FqNmodFiniteField) = orthogonal_group(MatrixGroup, e, n, F)
+
+function orthogonal_group(::Type{T}, e::Int, n::Int, q::Int) where T <: GAPGroup
+   a,p=ispower(q)
+   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   F=GF(p,a)[1]
+   return orthogonal_group(T,e,n,F)
+end
+
 orthogonal_group(n::Int, q::Int) = orthogonal_group(MatrixGroup, 0, n, q)
 
 orthogonal_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup = orthogonal_group(T, 0, n, q)
 
 orthogonal_group(e::Int, n::Int, q::Int) = orthogonal_group(MatrixGroup, e, n, q)
-
-function orthogonal_group(::Type{T}, e::Int, n::Int, q::Int) where T <: GAPGroup
-  if isodd(n)
-     @assert e==0 "Error, sign <e> must be 0 in odd dimension"
-  else
-     @assert e in (-1,+1) "Error, sign <e> must be -1, +1 in even dimension"
-  end
-  return T(GAP.Globals.GO(_gap_filter(T), e, n, q))
-end
 
 """
     special_orthogonal_group(n::Int, q::Int)
@@ -309,20 +403,38 @@ end
     SO = special_orthogonal_group
 return the special orthogonal group of dimension `n` over the field GF(`q`) of type `e`, where `e` in {`+1`,`-1`} for `n` even and `e`=`0` for `n` odd. If `n` is odd, `e` can be omitted. It is returned of type `T` for `T` = `MatrixGroup` or `PermGroup`.
 """
+function special_orthogonal_group(::Type{T}, e::Int, n::Int, F::FqNmodFiniteField) where T <: GAPGroup
+   q=Int(order(F))
+   if isodd(n)
+      e==0 || throw(ArgumentError("Error, sign <e> must be 0 in odd dimension"))
+   else
+      e in (-1,+1) || throw(ArgumentError("Error, sign <e> must be -1, +1 in even dimension"))
+   end
+   if T==MatrixGroup
+      return T(GAP.Globals.SO(_gap_filter(T),e,n,q),F)
+   else
+      return T(GAP.Globals.SO(_gap_filter(T),e,n,q))
+   end
+end
+
+special_orthogonal_group(n::Int, F::FqNmodFiniteField) = special_orthogonal_group(MatrixGroup, 0, n, F)
+
+special_orthogonal_group(::Type{T}, n::Int, F::FqNmodFiniteField) where T <: GAPGroup = special_orthogonal_group(T, 0, n, F)
+
+special_orthogonal_group(e::Int, n::Int, F::FqNmodFiniteField) = special_orthogonal_group(MatrixGroup, e, n, F)
+
+function special_orthogonal_group(::Type{T}, e::Int, n::Int, q::Int) where T <: GAPGroup
+   a,p=ispower(q)
+   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   F=GF(p,a)[1]
+   return special_orthogonal_group(T,e,n,F)
+end
+
 special_orthogonal_group(n::Int, q::Int) = special_orthogonal_group(MatrixGroup, 0, n, q)
 
 special_orthogonal_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup = special_orthogonal_group(T, 0, n, q)
 
 special_orthogonal_group(e::Int, n::Int, q::Int) = special_orthogonal_group(MatrixGroup, e, n, q)
-
-function special_orthogonal_group(::Type{T}, e::Int, n::Int, q::Int) where T <: GAPGroup
-  if isodd(n)
-     @assert e==0 "Error, sign <e> must be 0 in odd dimension"
-  else
-     @assert e in (-1,+1) "Error, sign <e> must be -1, +1 in even dimension"
-  end
-  return T(GAP.Globals.SO(_gap_filter(T), e, n, q))
-end
 
 """
     omega_group(n::Int, q::Int)
@@ -331,20 +443,39 @@ end
     omega_group(::Type{T}, e::Int, n::Int, q::Int)
 return the Omega group of dimension `n` over the field GF(`q`) of type `e`, where `e` in {`+1`,`-1`} for `n` even and `e`=`0` for `n` odd. If `n` is odd, `e` can be omitted. It is returned of type `T` for `T` = `MatrixGroup` or `PermGroup`.
 """
+function omega_group(::Type{T}, e::Int, n::Int, F::FqNmodFiniteField) where T <: GAPGroup
+   q=Int(order(F))
+   if isodd(n)
+      e==0 || throw(ArgumentError("Error, sign <e> must be 0 in odd dimension"))
+   else
+      e in (-1,+1) || throw(ArgumentError("Error, sign <e> must be -1, +1 in even dimension"))
+   end
+   if T==MatrixGroup
+      return T(GAP.Globals.Omega(_gap_filter(T),e,n,q),F)
+   else
+      return T(GAP.Globals.Omega(_gap_filter(T),e,n,q))
+   end
+end
+
+omega_group(n::Int, F::FqNmodFiniteField) = omega_group(MatrixGroup, 0, n, F)
+
+omega_group(::Type{T}, n::Int, F::FqNmodFiniteField) where T <: GAPGroup = omega_group(T, 0, n, F)
+
+omega_group(e::Int, n::Int, F::FqNmodFiniteField) = omega_group(MatrixGroup, e, n, F)
+
+function omega_group(::Type{T}, e::Int, n::Int, q::Int) where T <: GAPGroup
+   a,p=ispower(q)
+   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   F=GF(p,a)[1]
+   return omega_group(T,e,n,F)
+end
+
 omega_group(n::Int, q::Int) = omega_group(MatrixGroup, 0, n, q)
 
 omega_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup = omega_group(T, 0, n, q)
 
 omega_group(e::Int, n::Int, q::Int) = omega_group(MatrixGroup, e, n, q)
 
-function omega_group(::Type{T}, e::Int, n::Int, q::Int) where T <: GAPGroup
-  if isodd(n)
-     @assert e==0 "Error, sign <e> must be 0 in odd dimension"
-  else
-     @assert e in (-1,+1) "Error, sign <e> must be -1, +1 in even dimension"
-  end
-  return T(GAP.Globals.Omega(_gap_filter(T), e, n, q))
-end
 
 """
     general_linear_group(n::Int, q::Int)

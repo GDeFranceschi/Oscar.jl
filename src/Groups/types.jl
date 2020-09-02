@@ -11,6 +11,7 @@ import Hecke:
     domain,
     elem_type,
     elements,
+    FqNmodFiniteField,
     free_abelian_group,
     gens,
     haspreimage,
@@ -128,9 +129,10 @@ Groups of matrices. Every group of this type is the subgroup of GL(n,q) for some
 """
 struct MatrixGroup <: GAPGroup
   X::GapObj
-  function MatrixGroup(G::GapObj)
+  F::FqNmodFiniteField
+  function MatrixGroup(G::GapObj,F::FqNmodFiniteField)
     @assert GAP.Globals.IsMatrixGroup(G)
-    z = new(G)
+    z = new(G,F)
     return z
   end
 end

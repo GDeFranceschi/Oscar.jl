@@ -61,7 +61,7 @@ function MatHeckeToGap(x::TempMatType, F::FqNmodFiniteField)
 end
 
 function MatJuliaToHecke(x::GAPGroupElem{MatrixGroup})
-   F = GAP.Globals.FieldOfMatrixGroup(parent(x).X)
+   F = FieldHeckeToGap(parent(x).F)
    return MatGapToHecke(x.X,F)
 end
 
