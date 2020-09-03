@@ -30,6 +30,8 @@ export
 function _as_subgroup_bare(G::T, H::GapObj) where T
   if T==PermGroup
     H1 = T(H, G.deg)
+  elseif T==MatrixGroup
+    H1 = T(H, G.F)
   else
     H1 = T(H)
   end

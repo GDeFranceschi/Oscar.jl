@@ -164,8 +164,16 @@ function ==(x::GAPGroup, y::GAPGroup)
    return x.X == y.X
 end
 
+function ==(x::MatrixGroup, y::MatrixGroup)
+   return x.X == y.X && base_ring(x)==base_ring(y)
+end
+
 function ==(x::PermGroupElem, y::PermGroupElem)
    return x.X == y.X && degree(parent(x))==degree(parent(y))
+end
+
+function ==(x::MatrixGroupElem, y::MatrixGroupElem)
+   return x.X == y.X && base_ring(x)==base_ring(y)
 end
 
 function ==(x::T, y::T) where T <: GAPGroupElem

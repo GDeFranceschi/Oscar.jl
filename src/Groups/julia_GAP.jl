@@ -1,4 +1,4 @@
-import Hecke: order, base_ring, elements, transpose
+import Hecke: base_ring, det, dim, elements, order, tr, trace, transpose
 import GAP: FFE
 
 
@@ -18,6 +18,17 @@ function FieldHeckeToGap(F::FqNmodFiniteField)
    d = Int64(degree(F))
 
    return GAP.Globals.GF(p,d)
+end
+
+function FieldElemGapToHecke(x::FFE, Fgap::GapObj, F::FqNmodFiniteField)
+   q = GAP.Globals.Size(Fgap)
+   z = gen(F)
+   if GAP.Globals.IsZero(x)
+      return 0*z
+   else
+      d = Integer(GAP.Globals.LogFFE(x, GAP.Globals.Z(q)))
+      return z^d
+   end
 end
 
 function FieldElemGapToHecke(x::FFE, F::GapObj)
@@ -41,6 +52,14 @@ function FieldElemHeckeToGap(x::fq_nmod, F::FqNmodFiniteField)
    return y
 end
 
+function MatGapToHecke(x::GapObj, Fgap::GapObj, F::FqNmodFiniteField)
+   n = GAP.Globals.Size(x)
+   Arr = [GAP.gap_to_julia(x[i]) for i in 1:n]
+   L = [FieldElemGapToHecke(Arr[i][j],Fgap,F) for i in 1:n for j in 1:n]
+
+   return matrix(F,n,n,L)
+end
+
 function MatGapToHecke(x::GapObj, F::GapObj)
    n = GAP.Globals.Size(x)
    Arr = [GAP.gap_to_julia(x[i]) for i in 1:n]
@@ -62,7 +81,7 @@ end
 
 function MatJuliaToHecke(x::GAPGroupElem{MatrixGroup})
    F = FieldHeckeToGap(parent(x).F)
-   return MatGapToHecke(x.X,F)
+   return MatGapToHecke(x.X,F,parent(x).F)
 end
 
 function Base.getindex(x::GAPGroupElem{MatrixGroup}, i::Int64, j::Int64)
@@ -87,9 +106,7 @@ function (G::MatrixGroup)(x::TempMatType)
    return group_element(G,MatHeckeToGap(x,F))
 end
 
-function base_ring(G::MatrixGroup)
-   return FieldGapToHecke(GAP.Globals.FieldOfMatrixGroup(G.X))[1]
-end
+base_ring(G::MatrixGroup) = G.F
 
 base_ring(x::GAPGroupElem{MatrixGroup}) = base_ring(parent(x))
 
@@ -194,6 +211,18 @@ function transpose(x::GAPGroupElem{MatrixGroup})
    end
 end
 
+det(x::GAPGroupElem{MatrixGroup}) = det(MatJuliaToHecke(x))
+trace(x::GAPGroupElem{MatrixGroup}) = trace(MatJuliaToHecke(x))
+tr(x::GAPGroupElem{MatrixGroup}) = tr(MatJuliaToHecke(x))
+
+dim(G::MatrixGroup) = GAP.Globals.DimensionOfMatrixGroup(G.X)
+
+function (G::MatrixGroup)(L::Vector{fq_nmod})
+   n=dim(G)
+   length(L)==n^2 || throw(ArgumentError("Input vector of wrong length"))
+   return G(matrix(G.F,n,n,L))
+end
+   
 #########################################################################
 #
 # homomorphisms
