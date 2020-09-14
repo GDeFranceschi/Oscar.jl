@@ -236,7 +236,7 @@ general_linear_group(n::Int, F::FqNmodFiniteField) = general_linear_group(Matrix
 
 function general_linear_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
    a,p=ispower(q)
-   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   isprime(p) || throw(ArgumentError("q must be a prime power"))
    F=GF(p,a)[1]
    return general_linear_group(T,n,F)
 end
@@ -262,7 +262,7 @@ special_linear_group(n::Int, F::FqNmodFiniteField) = special_linear_group(Matrix
 
 function special_linear_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
    a,p=ispower(q)
-   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   isprime(p) || throw(ArgumentError("q must be a prime power"))
    F=GF(p,a)[1]
    return special_linear_group(T,n,F)
 end
@@ -289,7 +289,7 @@ symplectic_group(n::Int, F::FqNmodFiniteField) = symplectic_group(MatrixGroup, n
 
 function symplectic_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
    a,p=ispower(q)
-   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   isprime(p) || throw(ArgumentError("q must be a prime power"))
    F=GF(p,a)[1]
    return symplectic_group(T,n,F)
 end
@@ -317,8 +317,8 @@ unitary_group(n::Int, F::FqNmodFiniteField) = unitary_group(MatrixGroup, n, F)
 
 function unitary_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
    a,p=ispower(q)
-   isprime(q) || throw(ArgumentError("q must be a prime power"))
-   F=GF(p,a)[1]
+   isprime(p) || throw(ArgumentError("q must be a prime power"))
+   F=GF(p,2*a)[1]
    return unitary_group(T,n,F)
 end
 
@@ -346,8 +346,8 @@ special_unitary_group(n::Int, F::FqNmodFiniteField) = special_unitary_group(Matr
 
 function special_unitary_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
    a,p=ispower(q)
-   isprime(q) || throw(ArgumentError("q must be a prime power"))
-   F=GF(p,a)[1]
+   isprime(p) || throw(ArgumentError("q must be a prime power"))
+   F=GF(p,2*a)[1]
    return special_unitary_group(T,n,F)
 end
 
@@ -384,7 +384,7 @@ orthogonal_group(e::Int, n::Int, F::FqNmodFiniteField) = orthogonal_group(Matrix
 
 function orthogonal_group(::Type{T}, e::Int, n::Int, q::Int) where T <: GAPGroup
    a,p=ispower(q)
-   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   isprime(p) || throw(ArgumentError("q must be a prime power"))
    F=GF(p,a)[1]
    return orthogonal_group(T,e,n,F)
 end
@@ -425,7 +425,7 @@ special_orthogonal_group(e::Int, n::Int, F::FqNmodFiniteField) = special_orthogo
 
 function special_orthogonal_group(::Type{T}, e::Int, n::Int, q::Int) where T <: GAPGroup
    a,p=ispower(q)
-   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   isprime(p) || throw(ArgumentError("q must be a prime power"))
    F=GF(p,a)[1]
    return special_orthogonal_group(T,e,n,F)
 end
@@ -465,7 +465,7 @@ omega_group(e::Int, n::Int, F::FqNmodFiniteField) = omega_group(MatrixGroup, e, 
 
 function omega_group(::Type{T}, e::Int, n::Int, q::Int) where T <: GAPGroup
    a,p=ispower(q)
-   isprime(q) || throw(ArgumentError("q must be a prime power"))
+   isprime(p) || throw(ArgumentError("q must be a prime power"))
    F=GF(p,a)[1]
    return omega_group(T,e,n,F)
 end

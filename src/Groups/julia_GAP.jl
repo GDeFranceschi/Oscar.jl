@@ -5,6 +5,13 @@ import GAP: FFE
 # TODO: at this moment, only finite fields are implemented; in future we want to use infinite fields
 const TempMatType = fq_nmod_mat
 
+
+########################################################################
+#
+# conversions
+#
+########################################################################
+
 function FieldGapToHecke(F::GapObj)
    p = GAP.Globals.Characteristic(F)
    q = GAP.Globals.Size(F)
@@ -86,8 +93,14 @@ end
 
 function Base.getindex(x::GAPGroupElem{MatrixGroup}, i::Int64, j::Int64)
    F = GAP.Globals.FieldOfMatrixGroup(parent(x).X)
-   return FieldElemGapToHecke((x.X)[i,j], F)
+   return FieldElemGapToHecke((x.X)[i,j], F, base_ring(x))
 end
+
+########################################################################
+#
+# functions involving matrices
+#
+########################################################################
 
 function order(x::TempMatType)
    return GAP.Globals.Order(MatHeckeToGap(x,base_ring(parent(x))))
@@ -109,12 +122,6 @@ end
 base_ring(G::MatrixGroup) = G.F
 
 base_ring(x::GAPGroupElem{MatrixGroup}) = base_ring(parent(x))
-
-########################################################################
-#
-# functions involving matrices
-#
-########################################################################
 
 function Base.:in(x::TempMatType, G::MatrixGroup)
    F = base_ring(G)
@@ -216,11 +223,18 @@ trace(x::GAPGroupElem{MatrixGroup}) = trace(MatJuliaToHecke(x))
 tr(x::GAPGroupElem{MatrixGroup}) = tr(MatJuliaToHecke(x))
 
 dim(G::MatrixGroup) = GAP.Globals.DimensionOfMatrixGroup(G.X)
+dim(x::GAPGroupElem{MatrixGroup}) = GAP.Globals.DimensionsMat(x.X)[1]
 
 function (G::MatrixGroup)(L::Vector{fq_nmod})
    n=dim(G)
    length(L)==n^2 || throw(ArgumentError("Input vector of wrong length"))
    return G(matrix(G.F,n,n,L))
+end
+
+function (G::MatrixGroup)(L::Vector{Any})
+   F=base_ring(G)
+   L1=[F(y) for y in L]
+   return G(L1)
 end
    
 #########################################################################
