@@ -40,3 +40,22 @@ function hecke_isomorphic_group(G::PcGroup)
    
    return G_hecke, homom
 end
+
+
+function ghom(x, G, f)
+   y = haspreimage(f,x)[2]
+   z = one(G)
+   for i in 1:length(y.coeff)
+      z*=G[i]^(y.coeff[i])
+   end
+   return z
+end
+
+function oscar_isomorphic_group(G::GrpAbFinGen)
+   G1,f = snf(G)
+   L = Int64[order(y) for y in gens(G1)]
+   Go = abelian_group(PcGroup,L)
+   homom(t::GrpAbFinGenElem) = ghom(t, Go, f)
+
+   return Go, homom
+end
