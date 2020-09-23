@@ -1,3 +1,10 @@
+struct GenGroupHomomorphism
+   f                                 # homomorphisms between the two groups
+   domain::Union{PcGroup,GrpAbFinGen}
+   codomain::Union{PcGroup,GrpAbFinGen}
+end
+
+
 function fhom(g; genshecke=[0,0,0], y=1)
    G=parent(g)
    w = GAP.Globals.Factorization(G.X, g.X)
@@ -38,7 +45,7 @@ function hecke_isomorphic_group(G::PcGroup)
    end
    homom(t::GAPGroupElem) = fhom(t; genshecke=gen_of_G, y=id_Gh) 
    
-   return G_hecke, homom
+   return G_hecke, GenGroupHomomorphism(homom,G,G_hecke)
 end
 
 
@@ -54,8 +61,42 @@ end
 function oscar_isomorphic_group(G::GrpAbFinGen)
    G1,f = snf(G)
    L = Int64[order(y) for y in gens(G1)]
-   Go = abelian_group(PcGroup,L)
-   homom(t::GrpAbFinGenElem) = ghom(t, Go, f)
+   G_oscar = abelian_group(PcGroup,L)
+   homom(t::GrpAbFinGenElem) = ghom(t, G_oscar, f)
 
-   return Go, homom
+   return G_oscar, GenGroupHomomorphism(homom,G,G_oscar)
 end
+
+function isomorphism(G1::GrpAbFinGen, G2::PcGroup)
+   Go,f = oscar_isomorphic_group(G1)
+   vero,g = isisomorphic(Go,G2)
+   vero || throw(ArgumentError("The groups are not isomorphic"))
+
+   h(t::GrpAbFinGenElem) = g(f(t))
+   return GenGroupHomomorphism(h, G1,G2)
+end
+
+function isomorphism(G1::PcGroup, G2::GrpAbFinGen)
+   Gh,f = hecke_isomorphic_group(G1)
+   Sh,fh = snf(Gh)
+   S2,f2 = snf(G2)
+   filter(x -> x != 1, Sh.snf) == filter(x -> x != 1, S2.snf) || throw(ArgumentError("The groups are not isomorphic"))
+   
+   h(t::GAPGroupElem{PcGroup}) = f2(inv(fh)(f(t)))
+   return GenGroupHomomorphism(h,G1,G2)
+end
+   
+
+##########################################################################################
+
+# Functions for the isomorphisms between the two groups
+
+##########################################################################################
+
+Base.show(io::IO, f::GenGroupHomomorphism) = print(io, "Isomorphism between \n", f.domain, " and \n", f.codomain)
+
+(f::GenGroupHomomorphism)(x::Union{GrpAbFinGenElem,GAPGroupElem{PcGroup}}) = f.f(x)
+
+domain(f::GenGroupHomomorphism) = f.domain
+codomain(f::GenGroupHomomorphism) = f.codomain
+
