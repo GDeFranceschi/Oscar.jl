@@ -12,7 +12,7 @@ export
 
 const AllGrp = Union{GAPGroup,GrpAbFinGen}
 
-struct GenGroupHomomorphism{S,T} <: Map{AllGrp,AllGrp, Map, GenGroupHomomorphism}
+struct GenGroupHomomorphism{S<:AllGrp, T<:AllGrp} <: Map{S,T, GAPMap, GenGroupHomomorphism{S,T}}
    f                                 # homomorphisms between the two groups
    domain::S
    codomain::T

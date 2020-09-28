@@ -54,9 +54,9 @@
    @test domain(f2)==K
    @test codomain(f1)==H1
    @test codomain(f2)==H2
-   @test f1*h1==f2*h2
+   @test h1*f1==h2*f2
    @test degree(K)==degree(G)
-   @test (K,f1*h1)==sub(G, gens(alternating_group(3)))
+   @test (K,h1*f1)==sub(G, gens(alternating_group(3)))
 
    @test derived_subgroup(G)[1] == alternating_group(4)
    L = derived_series(G)
