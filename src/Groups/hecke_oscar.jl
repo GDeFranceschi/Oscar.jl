@@ -10,12 +10,13 @@ export
     isomorphism,
     oscar_isomorphic_group
 
+
 const AllGrp = Union{GAPGroup,GrpAbFinGen}
 
 struct GenGroupHomomorphism{S<:AllGrp, T<:AllGrp} <: Map{S,T, GAPMap, GenGroupHomomorphism{S,T}}
-   f                                 # homomorphisms between the two groups
    domain::S
    codomain::T
+   f                                 # homomorphisms between the two groups
 end
 
 
@@ -59,7 +60,7 @@ function hecke_isomorphic_group(G::PcGroup)
    end
    homom(t::GAPGroupElem) = fhom(t; genshecke=gen_of_G, y=id_Gh) 
    
-   return G_hecke, GenGroupHomomorphism{PcGroup,GrpAbFinGen}(homom,G,G_hecke)
+   return G_hecke, GenGroupHomomorphism{PcGroup,GrpAbFinGen}(G,G_hecke,homom)
 end
 
 
@@ -78,7 +79,7 @@ function oscar_isomorphic_group(G::GrpAbFinGen)
    G_oscar = abelian_group(PcGroup,L)
    homom(t::GrpAbFinGenElem) = ghom(t, G_oscar, f)
 
-   return G_oscar, GenGroupHomomorphism{GrpAbFinGen,PcGroup}(homom,G,G_oscar)
+   return G_oscar, GenGroupHomomorphism{GrpAbFinGen,PcGroup}(G,G_oscar,homom)
 end
 
 function isomorphism(G1::GrpAbFinGen, G2::PcGroup)
@@ -87,7 +88,7 @@ function isomorphism(G1::GrpAbFinGen, G2::PcGroup)
    vero || throw(ArgumentError("The groups are not isomorphic"))
 
    h(t::GrpAbFinGenElem) = g(f(t))
-   return GenGroupHomomorphism{GrpAbFinGen,PcGroup}(h, G1,G2)
+   return GenGroupHomomorphism{GrpAbFinGen,PcGroup}(G1,G2,h)
 end
 
 function isomorphism(G1::PcGroup, G2::GrpAbFinGen)
@@ -97,7 +98,7 @@ function isomorphism(G1::PcGroup, G2::GrpAbFinGen)
    filter(x -> x != 1, Sh.snf) == filter(x -> x != 1, S2.snf) || throw(ArgumentError("The groups are not isomorphic"))
    
    h(t::GAPGroupElem{PcGroup}) = f2(inv(fh)(f(t)))
-   return GenGroupHomomorphism{PcGroup,GrpAbFinGen}(h,G1,G2)
+   return GenGroupHomomorphism{PcGroup,GrpAbFinGen}(G1,G2,h)
 end
    
 
@@ -108,6 +109,7 @@ end
 ##########################################################################################
 
 const AllHom = Union{GAPGroupHomomorphism,GrpAbFinGenMap,GenGroupHomomorphism}
+const AllExHom = Union{GAPGroupHomomorphism,GrpAbFinGenMap}
 
 Base.show(io::IO, f::GenGroupHomomorphism) = print(io, "Isomorphism between \n", f.domain, " and \n", f.codomain)
 
@@ -116,26 +118,74 @@ Base.show(io::IO, f::GenGroupHomomorphism) = print(io, "Isomorphism between \n",
 domain(f::GenGroupHomomorphism) = f.domain
 codomain(f::GenGroupHomomorphism) = f.codomain
 
-function compose(f::GenGroupHomomorphism{S,T}, g::GenGroupHomomorphism{T,U}) where {S,T,U}
-   domain(g)==codomain(f) || throw(ArgumentError("Maps not composable"))
-   h(t) = g(f(t))
+function compose(f::GenGroupHomomorphism{T,U}, g::GenGroupHomomorphism{S,T}) where {S,T,U}
+   domain(f)==codomain(g) || throw(ArgumentError("Maps not composable"))
+   h(t) = f(g(t))
 
-   return GenGroupHomomorphism{S,U}(h,domain(f),codomain(g))
+   return GenGroupHomomorphism{S,U}(domain(g),codomain(f),h)
 end
 
-function compose(f::GenGroupHomomorphism{S,U}, g::T) where T<:AllHom where {S,U}
-   domain(g)==codomain(f) || throw(ArgumentError("Maps not composable"))
-   h(t) = g(f(t))
+function compose(f::GenGroupHomomorphism{S,U}, g::T) where T<:AllExHom where {S,U}
+   domain(f)==codomain(g) || throw(ArgumentError("Maps not composable"))
+   h(t) = f(g(t))
 
-   return GenGroupHomomorphism{S,typeof(codomain(g))}(h,domain(f),codomain(g))
+   return GenGroupHomomorphism{typeof(domain(g)),U}(domain(g),codomain(f),h)
 end
 
-function compose(f::AllHom, g::GenGroupHomomorphism{S,T}) where {S,T}
-   domain(g)==codomain(f) || throw(ArgumentError("Maps not composable"))
-   h(t) = g(f(t))
+function compose(f::AllExHom, g::GenGroupHomomorphism{S,T}) where {S,T}
+   domain(f)==codomain(g) || throw(ArgumentError("Maps not composable"))
+   h(t) = f(g(t))
 
-   return GenGroupHomomorphism{typeof(domain(f)),T}(h,domain(f),codomain(g))
+   return GenGroupHomomorphism{S,typeof(codomain(f))}(domain(g),codomain(f),h)
 end
 
-Base.:*(f::AllHom, g::AllHom) = compose(f,g)
-(f::AllHom)(g::AllHom) = compose(g,f)
+Base.:*(f::AllHom, g::AllHom) = compose(g,f)
+(f::AllHom)(g::AllHom) = compose(f,g)
+
+# change of type
+
+function oscar_group_homomorphism(f::GenGroupHomomorphism{S,T}) where {S,T}
+   if S<:GAPGroup && T<:GAPGroup
+      G=domain(f)
+      H=codomain(f)
+      h=hom(G,H,gens(G),[f(y) for y in gens(G)])
+   else
+      throw(ArgumentError("The groups are not both GAPGroups"))
+   end
+
+   return h
+end
+
+function hecke_group_homomorphism(f::GenGroupHomomorphism{S,T}) where {S,T}
+   if S<:GrpAbFinGen && T<:GrpAbFinGen
+      G=domain(f)
+      H=codomain(f)
+      h=hom(G,H,[f(y) for y in gens(G)])
+   else
+      throw(ArgumentError("The groups are not both Hecke groups"))
+   end
+
+   return h
+end
+
+function Base.inv(f::GenGroupHomomorphism{S,T}) where {S,T}
+   G=domain(f)
+   H=codomain(f)
+
+   if G isa GAPGroup && H isa GAPGroup
+      g = oscar_group_homomorphism(f)
+      return GenGroupHomomorphism{T,S}(H,G,inv(g))
+   elseif G isa GrpAbFinGen && GrpAbFinGen
+      g = hecke_group_homomorphism(f)
+      return GenGroupHomomorphism{T,S}(H,G,inv(g))
+   elseif G isa GAPGroup && H isa GrpAbFinGen
+      h = isomorphism(H,G)
+      h1 = inv(oscar_group_homomorphism(f*h))
+      return GenGroupHomomorphism{T,S}(H,G,h*h1)
+   else
+      h = isomorphism(H,G)
+      h1 = inv(hecke_group_homomorphism(f*h))
+      return GenGroupHomomorphism{T,S}(H,G,h*h1)
+   end
+end
+
