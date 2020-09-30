@@ -189,3 +189,26 @@ function Base.inv(f::GenGroupHomomorphism{S,T}) where {S,T}
    end
 end
 
+# FIXME: change it?
+function image(f::GenGroupHomomorphism{S,T}) where {S,T}
+   G = domain(f)
+   H = codomain(f)
+
+   return sub(H,[f(x) for x in gens(G)])
+end
+
+function haspreimage(f::GenGroupHomomorphism{S,T}, x) where {S,T}
+   G=domain(f)
+   H=codomain(f)
+   
+   x in H || throw(ArgumentError("Element not in the codomain of the function"))
+   if T==GrpAbFinGen
+      H1,e=sub(H,[f(z) for z in gens(G)])
+      vero,a=haspreimage(e,x)
+      if vero
+         return true, prod([G[i]^(a.coeff[i]) for i in 1:ngens(G)])
+      else
+         return false, one(G)
+      end
+   end
+end
