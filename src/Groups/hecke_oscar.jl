@@ -36,7 +36,7 @@ function fhom(g; genshecke=[0,0,0], y=1)
 end
    
 
-function hecke_isomorphic_group(G::PcGroup)
+function hecke_isomorphic_group(G::PcGroup; PresGen=false)     # PresGen = preserve generators, i.e. f(G[i])=H[i] for every i
    isabelian(G) || throw(ArgumentError("G is not abelian"))
    Lgap=GAP.Globals.IndependentGeneratorsOfAbelianGroup(G.X)
    ng = length(Lgap)                                    # number of generators of the Hecke group
@@ -44,7 +44,7 @@ function hecke_isomorphic_group(G::PcGroup)
    AbInv=[GAP.Globals.Order(Lgap[i]) for i in 1:ng]                         # abelian invariants
    G_hecke = abelian_group(AbInv)
    Words = [GAP.Globals.Factorization(Gnew, gens(G)[i].X) for i in 1:ngens(G)]
-   id_Gh = G_hecke[1]*AbInv[1]                # TODO: how do I have access to the identity of G_hecke ?
+   id_Gh = id(G_hecke)
    gen_of_G = [id_Gh for i in 1:ngens(G)]                  # generating set for G_hecke isomorphic to the generating set for G
    for i in 1:ngens(G)
       arr=GAP.gap_to_julia(GAP.Globals.LetterRepAssocWord(Words[i]))
@@ -58,14 +58,23 @@ function hecke_isomorphic_group(G::PcGroup)
       end
       gen_of_G[i] = z
    end
-   homom(t::GAPGroupElem) = fhom(t; genshecke=gen_of_G, y=id_Gh) 
+   if PresGen
+      G_hecke = sub(G_hecke,gen_of_G)[1]
+      gen_of_G = gens(G_hecke)
+      id_Gh = id(G_hecke)
+   end
+   homom(t::GAPGroupElem) = fhom(t; genshecke=gen_of_G, y=id_Gh)
    
    return G_hecke, GenGroupHomomorphism{PcGroup,GrpAbFinGen}(G,G_hecke,homom)
 end
 
 
-function ghom(x, G, f)
-   y = haspreimage(f,x)[2]
+function ghom(x, G, f; pres_gen=false)
+   if pres_gen
+      y = x
+   else
+      y = haspreimage(f,x)[2]
+   end
    z = one(G)
    for i in 1:length(y.coeff)
       z*=G[i]^(y.coeff[i])
@@ -73,11 +82,15 @@ function ghom(x, G, f)
    return z
 end
 
-function oscar_isomorphic_group(G::GrpAbFinGen)
+function oscar_isomorphic_group(G::GrpAbFinGen; PresGen=false)
    G1,f = snf(G)
    L = Int64[order(y) for y in gens(G1)]
    G_oscar = abelian_group(PcGroup,L)
-   homom(t::GrpAbFinGenElem) = ghom(t, G_oscar, f)
+   if PresGen
+      gen_G = [prod([G_oscar[j]^(haspreimage(f,G[i])[2].coeff[j]) for j in 1:length(L)]) for i in 1:ngens(G)]
+      G_oscar = sub(G_oscar, gen_G)[1]
+   end
+   homom(t::GrpAbFinGenElem) = ghom(t, G_oscar, f; pres_gen=PresGen)
 
    return G_oscar, GenGroupHomomorphism{GrpAbFinGen,PcGroup}(G,G_oscar,homom)
 end
@@ -113,7 +126,10 @@ const AllExHom = Union{GAPGroupHomomorphism,GrpAbFinGenMap}
 
 Base.show(io::IO, f::GenGroupHomomorphism) = print(io, "Isomorphism between \n", f.domain, " and \n", f.codomain)
 
-(f::GenGroupHomomorphism)(x::Union{GrpAbFinGenElem,GAPGroupElem}) = f.f(x)
+function (f::GenGroupHomomorphism)(x::Union{GrpAbFinGenElem,GAPGroupElem})
+   parent(x)==domain(f) || throw(ArgumentError("Element not in the domain of the map"))
+   return f.f(x)
+end
 
 domain(f::GenGroupHomomorphism) = f.domain
 codomain(f::GenGroupHomomorphism) = f.codomain
@@ -141,6 +157,7 @@ end
 
 Base.:*(f::AllHom, g::AllHom) = compose(g,f)
 (f::AllHom)(g::AllHom) = compose(f,g)
+
 
 # change of type
 
@@ -175,7 +192,7 @@ function Base.inv(f::GenGroupHomomorphism{S,T}) where {S,T}
    if G isa GAPGroup && H isa GAPGroup
       g = oscar_group_homomorphism(f)
       return GenGroupHomomorphism{T,S}(H,G,inv(g))
-   elseif G isa GrpAbFinGen && GrpAbFinGen
+   elseif G isa GrpAbFinGen && H isa GrpAbFinGen
       g = hecke_group_homomorphism(f)
       return GenGroupHomomorphism{T,S}(H,G,inv(g))
    elseif G isa GAPGroup && H isa GrpAbFinGen
@@ -202,7 +219,15 @@ function haspreimage(f::GenGroupHomomorphism{S,T}, x) where {S,T}
    H=codomain(f)
    
    x in H || throw(ArgumentError("Element not in the codomain of the function"))
+   if S==T
+      if S==GrpAbFinGen
+         return haspreimage(hecke_group_homomorphism(f),x)
+      elseif T<:GAPGroup
+         return haspreimage(oscar_group_homomorphism(f),x)
+      end
+   end      
    if T==GrpAbFinGen
+      x!=id(H) || return true, one(G)
       H1,e=sub(H,[f(z) for z in gens(G)])
       vero,a=haspreimage(e,x)
       if vero
@@ -211,4 +236,53 @@ function haspreimage(f::GenGroupHomomorphism{S,T}, x) where {S,T}
          return false, one(G)
       end
    end
+   if T<:GAPGroup
+      imH=sub(H,[f(g) for g in gens(G)])[1]
+      if x in imH
+         x!=one(H) || return true, id(G)
+         w=GAP.Globals.Factorization(H.X,x.X)
+         arr=GAP.gap_to_julia(GAP.Globals.LetterRepAssocWord(w))
+         z = id(G)
+         for i in arr
+            if i<0
+               z -= G[-i]
+            else
+               z += G[i]
+            end
+         end
+         return true, z
+      else
+         return false, one(G)
+      end
+   end
 end
+
+
+function kernel(f::GenGroupHomomorphism{S,T}) where {S,T}
+   G=domain(f)
+   H=codomain(f)
+
+   if S==T
+      if S==GrpAbFinGen
+         return kernel(hecke_group_homomorphism(f))
+      elseif T<:GAPGroup
+         return kernel(oscar_group_homomorphism(f))
+      end
+   end
+   if T==GrpAbFinGen
+      H1,f1=hecke_isomorphic_group(G)
+      f2=hecke_group_homomorphism(inv(f1)*f)
+      K,e=kernel(f2)
+      Snf,s=snf(K)         # TODO this passage serves to build a kernel with a minimal number of generators, but it can be skipped
+      gen_K = [haspreimage(f1,e(s(g)))[2] for g in gens(Snf)]
+      return sub(G,gen_K)
+   end
+   if T<:GAPGroup
+      H1,f1=oscar_isomorphic_group(G)
+      f2=oscar_group_homomorphism(inv(f1)*f)
+      K,e=kernel(f2)
+      gen_K = [haspreimage(f1,e(g))[2] for g in gens(K)]
+      return sub(G,gen_K)
+   end
+end
+
