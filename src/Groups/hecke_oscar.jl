@@ -35,7 +35,12 @@ function fhom(g; genshecke=[0,0,0], y=1)
    return y
 end
    
+"""
+    hecke_isomorphic_group(G::PcGroup; PresGen=false)
+Given an abelian group `G` of type `PcGroup`, return (`H`,`f`), where `H` is an abelian group of type `GrpAbFinGen` isomorphic to `G` and `f` is the isomorphism from `G` to `H` of type `GenGroupHomomorphism{PcGroup,GrpAbFinGen}`.
 
+If the parameter `PresGen` is set `true`, then the isomorphism `f` is such that `f(G[i])=H[i]` for every `i` in `1:ngens(G)`.
+"""
 function hecke_isomorphic_group(G::PcGroup; PresGen=false)     # PresGen = preserve generators, i.e. f(G[i])=H[i] for every i
    isabelian(G) || throw(ArgumentError("G is not abelian"))
    Lgap=GAP.Globals.IndependentGeneratorsOfAbelianGroup(G.X)
@@ -82,6 +87,12 @@ function ghom(x, G, f; pres_gen=false)
    return z
 end
 
+"""
+    oscar_isomorphic_group(G::PcGroup; PresGen=false)
+Given an abelian group `G` of type `GrpAbFinGen`, return (`H`,`f`), where `H` is an abelian group of type `PcGroup` isomorphic to `G` and `f` is the isomorphism from `G` to `H` of type `GenGroupHomomorphism{GrpAbFinGen,PcGroup}`.
+
+If the parameter `PresGen` is set `true`, then the isomorphism `f` is such that `f(G[i])=H[i]` for every `i` in `1:ngens(G)`.
+"""
 function oscar_isomorphic_group(G::GrpAbFinGen; PresGen=false)
    G1,f = snf(G)
    L = Int64[order(y) for y in gens(G1)]
@@ -95,6 +106,11 @@ function oscar_isomorphic_group(G::GrpAbFinGen; PresGen=false)
    return G_oscar, GenGroupHomomorphism{GrpAbFinGen,PcGroup}(G,G_oscar,homom)
 end
 
+"""
+    isomorphism(G1::GrpAbFinGen, G2::PcGroup)
+    isomorphism(G1::PcGroup, G2::GrpAbFinGen)
+Return the isomorphism between two abelian groups, one of type `PcGroup` and the other of type `GrpAbFinGen`.
+"""
 function isomorphism(G1::GrpAbFinGen, G2::PcGroup)
    Go,f = oscar_isomorphic_group(G1)
    vero,g = isisomorphic(Go,G2)
@@ -124,14 +140,36 @@ end
 const AllHom = Union{GAPGroupHomomorphism,GrpAbFinGenMap,GenGroupHomomorphism}
 const AllExHom = Union{GAPGroupHomomorphism,GrpAbFinGenMap}
 
+function _group_elm_type(T)
+   if T==GrpAbFinGen
+      return GrpAbFinGenElem
+   elseif T<:GAPGroup
+      return GAPGroupElem{T}
+   end
+end
+
 Base.show(io::IO, f::GenGroupHomomorphism) = print(io, "Isomorphism between \n", f.domain, " and \n", f.codomain)
 
 function (f::GenGroupHomomorphism)(x::Union{GrpAbFinGenElem,GAPGroupElem})
-   parent(x)==domain(f) || throw(ArgumentError("Element not in the domain of the map"))
-   return f.f(x)
+   if parent(x)==domain(f)
+      return f.f(x)
+   elseif typeof(domain(f))<:GAPGroup && x in domain(f)
+      return f.f(group_element(domain(f),x.X))           # necessary, otherwise the output could be wrong
+   else
+       throw(ArgumentError("Element not in the domain of the map"))
+   end
 end
 
+"""
+    domain(f::GenGroupHomomorphism)
+Return the domain of `f`.
+"""
 domain(f::GenGroupHomomorphism) = f.domain
+
+"""
+    codomain(f::GenGroupHomomorphism)
+Return the codomain of `f`.
+"""
 codomain(f::GenGroupHomomorphism) = f.codomain
 
 function compose(f::GenGroupHomomorphism{T,U}, g::GenGroupHomomorphism{S,T}) where {S,T,U}
@@ -207,6 +245,10 @@ function Base.inv(f::GenGroupHomomorphism{S,T}) where {S,T}
 end
 
 # FIXME: change it?
+"""
+    image(f::GenGroupHomomorphism{S,T})
+Return the image of `f` as subgroup of the codomain of `f`, together with the embedding homomorphism.
+"""
 function image(f::GenGroupHomomorphism{S,T}) where {S,T}
    G = domain(f)
    H = codomain(f)
@@ -214,6 +256,10 @@ function image(f::GenGroupHomomorphism{S,T}) where {S,T}
    return sub(H,[f(x) for x in gens(G)])
 end
 
+"""
+    haspreimage(f::GenGroupHomomorphism{S,T}, x)
+Return (`true`,`y`) if `y` is an element in the domain of `f` such that `f(y)=x`. If such `y` does not exists, return (`false`,`id`), where `id` is the group identity of `domain(f)`.
+"""
 function haspreimage(f::GenGroupHomomorphism{S,T}, x) where {S,T}
    G=domain(f)
    H=codomain(f)
@@ -252,12 +298,28 @@ function haspreimage(f::GenGroupHomomorphism{S,T}, x) where {S,T}
          end
          return true, z
       else
-         return false, one(G)
+         return false, id(G)
       end
    end
 end
 
+"""
+    preimage(f::GenGroupHomomorphism{S,T}, x)
+Return `y` such that `f(y)=x`. If such `y` does not exist, an ERROR is returned.
+"""
+function preimage(f::GenGroupHomomorphism{S,T}, x) where {S,T}
+   vero,y=haspreimage(f,x)
+   if vero
+      return y
+   else
+      throw(ArgumentError("Element not in the image of the function"))
+   end
+end
 
+"""
+    kernel(f::GenGroupHomomorphism{S,T})
+Return the kernel of `f` as a subgroup of the domain of `f`, together with the embedding homomorphism.
+"""
 function kernel(f::GenGroupHomomorphism{S,T}) where {S,T}
    G=domain(f)
    H=codomain(f)
@@ -285,4 +347,42 @@ function kernel(f::GenGroupHomomorphism{S,T}) where {S,T}
       return sub(G,gen_K)
    end
 end
+
+"""
+    preimage(f::GenGroupHomomorphism{S,T}, H::GAPGroup, e::GAPGroupHomomorphism)
+    preimage(f::GenGroupHomomorphism{S,T}, H::GrpAbFinGen, e::GrpAbFinGenMap)
+If `H` is a subgroup of the codomain of `f` and `e` is the embedding homomorphism of `H` into the codomain of `f`, then return the subgroup `f^-1(H)`, together with the embedding homomorphism into the domain of `f`.
+
+If `H` has type `GAPGroup`, then the homomorphism `e` can be omitted.
+"""
+function preimage(f::GenGroupHomomorphism{S,T}, H::T, e) where {S,T}  # e is the embedding of H into codomain(f)
+   G=domain(f)
+
+   K,emb=kernel(f)
+   gen_preim = [emb(k) for k in gens(K)]
+   for h in gens(H)
+      vero, s = haspreimage(f,e(h))
+      if vero gen_preim = vcat(gen_preim,s) end
+   end
+   return sub(G,gen_preim)
+end
+
+function preimage(f::GenGroupHomomorphism{S,T}, H::T) where {S,T}
+   G=domain(f)
+   G1=codomain(f)
+
+   if S==T
+      if T<:GAPGroup
+         return preimage(oscar_group_homomorphism(f),H)
+      end
+   end
+   if T<:GAPGroup
+      e = embedding(G1,H)
+      return preimage(f,H,e)
+   end
+   if T==GrpAbFinGen
+      throw(ArgumentError("For subgroups of type `GrpAbFinGen`, the embedding must be passed as argument too."))
+   end
+end
+
 
