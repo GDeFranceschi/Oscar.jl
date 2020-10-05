@@ -286,7 +286,7 @@ function haspreimage(f::GenGroupHomomorphism{S,T}, x) where {S,T}
       imH=sub(H,[f(g) for g in gens(G)])[1]
       if x in imH
          x!=one(H) || return true, id(G)
-         w=GAP.Globals.Factorization(H.X,x.X)
+         w=GAP.Globals.Factorization(imH.X,x.X)
          arr=GAP.gap_to_julia(GAP.Globals.LetterRepAssocWord(w))
          z = id(G)
          for i in arr
@@ -324,14 +324,10 @@ function kernel(f::GenGroupHomomorphism{S,T}) where {S,T}
    G=domain(f)
    H=codomain(f)
 
-   if S==T
+   if T==GrpAbFinGen
       if S==GrpAbFinGen
          return kernel(hecke_group_homomorphism(f))
-      elseif T<:GAPGroup
-         return kernel(oscar_group_homomorphism(f))
       end
-   end
-   if T==GrpAbFinGen
       H1,f1=hecke_isomorphic_group(G)
       f2=hecke_group_homomorphism(inv(f1)*f)
       K,e=kernel(f2)
@@ -340,6 +336,9 @@ function kernel(f::GenGroupHomomorphism{S,T}) where {S,T}
       return sub(G,gen_K)
    end
    if T<:GAPGroup
+      if S<:GAPGroup
+         return kernel(oscar_group_homomorphism(f))
+      end
       H1,f1=oscar_isomorphic_group(G)
       f2=oscar_group_homomorphism(inv(f1)*f)
       K,e=kernel(f2)
@@ -371,14 +370,13 @@ function preimage(f::GenGroupHomomorphism{S,T}, H::T) where {S,T}
    G=domain(f)
    G1=codomain(f)
 
-   if S==T
-      if T<:GAPGroup
-         return preimage(oscar_group_homomorphism(f),H)
-      end
-   end
    if T<:GAPGroup
-      e = embedding(G1,H)
-      return preimage(f,H,e)
+      if S<:GAPGroup
+         return preimage(oscar_group_homomorphism(f),H)
+      else
+         e = embedding(G1,H)
+         return preimage(f,H,e)
+      end
    end
    if T==GrpAbFinGen
       throw(ArgumentError("For subgroups of type `GrpAbFinGen`, the embedding must be passed as argument too."))

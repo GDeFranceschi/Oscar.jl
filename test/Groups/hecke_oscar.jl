@@ -76,4 +76,60 @@
 
 end
 
+@testset "Kernel, image, preimage" begin
+   H=abelian_group([4,4,2])
+   G,g=oscar_isomorphic_group(H; PresGen=true)
+   h = hom(G,G,gens(G),[G[1]^4,G[2],G[3]])
+   f = g*h
+   
+   @test domain(f)==H
+   @test codomain(f)==G
+   Gi,ei = image(f)
+   @test Gi==sub(G,[G[2],G[3]])[1]
+   for i in 1:ngens(Gi)
+      vero,h=haspreimage(f,Gi[i])
+      @test vero
+      @test f(h)==Gi[i]
+      @test h==preimage(f,Gi[i])
+   end
+   @test haspreimage(f,G[1])==(false,id(H))
+   @test_throws ArgumentError preimage(f,G[1])
+   @test_throws ErrorException inv(f)
+   K,e=kernel(f)
+   for i in 1:ngens(K)
+      @test f(e(K[i]))==one(G)
+   end
+   S,e=sub(G,[G[3]])
+   Sh,eh=preimage(f,S,e)
+   for i in 1:ngens(Sh)
+      @test f(eh(Sh[i])) in S
+   end
 
+   H=abelian_group(PcGroup,[4,4,2])
+   G,g=hecke_isomorphic_group(H; PresGen=true)
+   h = hom(G,G,[G[1]*4,G[2],G[3]])
+   f = g*h
+   
+   @test domain(f)==H
+   @test codomain(f)==G
+   Gi,ei = image(f)
+   @test rels(Gi)==rels(sub(G,[id(G),G[2],G[3]])[1])
+   for i in 1:ngens(Gi)
+      vero,h=haspreimage(f,ei(Gi[i]))
+      @test vero
+      @test f(h)==ei(Gi[i])
+      @test h==preimage(f,ei(Gi[i]))
+   end
+   @test haspreimage(f,G[1])==(false,one(H))
+   @test_throws ArgumentError preimage(f,G[1])
+   @test_throws AssertionError inv(f)
+   K,e=kernel(f)
+   for i in 1:ngens(K)
+       @test f(K[i])==id(G)
+   end
+   @test (K,e)==sub(H,[H[1]])
+   S,e=sub(G,[G[3]])
+   Sh,eh=preimage(f,S,e)
+   @test Sh==sub(H,[H[1],H[3]])[1]
+end
+   
