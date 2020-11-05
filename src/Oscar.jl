@@ -189,6 +189,7 @@ include("Groups/action.jl")
 include("Groups/iso_oscar_gap.jl")
 include("Groups/MatGrp.jl")
 include("Groups/classical_groups/classical_groups.jl")
+include("Groups/jordan_struct.jl")
 
 include("Rings/integer.jl")
 include("Rings/rational.jl")
