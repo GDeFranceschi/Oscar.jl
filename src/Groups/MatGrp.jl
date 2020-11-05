@@ -882,3 +882,4 @@ function Base.rand(C::GroupConjClass{S,T}) where S<:MatrixGroup where T<:MatrixG
    H.X = GAP.Globals.Random(C.CC)
    return H
 end
+
