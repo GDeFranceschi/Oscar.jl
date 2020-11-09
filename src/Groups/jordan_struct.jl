@@ -1,4 +1,4 @@
-import Hecke: multiplicative_jordan_decomposition
+import Hecke: evaluate, multiplicative_jordan_decomposition
 
 export
     block_matrix,
@@ -55,6 +55,7 @@ function submatrix(A::MatElem, nr::Int, nc::Int, i::Int, j::Int)
    return matrix(base_ring(A),nr,nc, [A[s,t] for s in i:nr+i-1 for t in j:nc+j-1])
 end
 
+# exists already in Hecke _copy_matrix_into_matrix
 """
     insert_block(A::MatElem, B::MatElem, i,j)
 
@@ -84,6 +85,7 @@ function insert_block!(A::MatElem{T}, B::MatElem{T}, i::Int, j::Int) where T <: 
    return A
 end
 
+# exists already in Hecke cat(V...; dims=(1,2))
 """
     diagonal_join(V::AbstractVector{<:MatElem})
     diagonal_join(V::T...) where T <: MatElem
@@ -105,6 +107,10 @@ function diagonal_join(V::AbstractVector{T}) where T <: MatElem
 end
 
 diagonal_join(V::T...) where T <: MatElem = diagonal_join(collect(V))
+
+#=
+diagonal_join(V::T...) where T <: MatElem = cat(V; dims=(1,2))
+=#
 
 """
     block_matrix(m::Int, n::Int, V::AbstractVector{T}) where T <: MatElem
@@ -133,4 +139,16 @@ function block_matrix(m::Int, n::Int, V::AbstractVector{T}) where T <: MatElem
       pos_i += nrows(V[n*(i-1)+1])
    end
    return B
+end
+
+
+
+########################################################################
+#
+# Misc
+#
+########################################################################
+
+function evaluate(f::PolyElem, x::MatElem)
+   return sum([coefficients(f)[i]*x^i for i in 0:degree(f)])
 end
