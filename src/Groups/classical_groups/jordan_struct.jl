@@ -1,3 +1,5 @@
+import Hecke: evaluate, multiplicative_jordan_decomposition, PolyElem, _rational_canonical_form_setup, refine_for_jordan
+
 export
     block_matrix,
     diagonal_join,
@@ -25,6 +27,8 @@ end
 
 issemisimple(x::MatrixGroupElem) = iscoprime(Int(order(x)), Int(characteristic(x.parent.ring)))
 isunipotent(x::MatrixGroupElem) = isone(x) || ispower(Int(order(x)))[2]==Int(characteristic(x.parent.ring))
+
+
 
 
 
