@@ -11,9 +11,9 @@ function _elem_given_det(x,d)
 end
 
 # returns as matrices
-# TODO: uses gen(F) for a generator of the multiplicative group of F
+# TODO: uses gen(F) for a generator of the multiplicative group of F, but it is wrong
 function _gens_for_GL(n::Int, F::Ring)
-   if n==1 return matrix(F,1,1,[gen(F)]) end
+   if n==1 return [matrix(F,1,1,[gen(F)])] end
    if order(F)==2
       h1 = identity_matrix(F,n)
       h1[1,2] = 1
@@ -35,7 +35,9 @@ end
 # return the generators for the centralizers of the unipotent element
 # assumes V is sorted (e.g. [1,1,1,2,3,3])
 function _centr_unipotent(F::Ring, V::AbstractVector{Int}) 
-   
+   n = sum(V)
+   _lambda = gen(F)  
+
    # L = multiset(V)
    L=[[V[1],1]]
    for i in 2:length(V)
@@ -46,7 +48,41 @@ function _centr_unipotent(F::Ring, V::AbstractVector{Int})
       end
    end
    listgens = MatElem[]
-   
-   
 
+   # generators for GL + internal diagonal blocks
+   pos=1
+   for l in L
+      for x in _gens_for_GL(l[2],F)
+         z = block_matrix(l[2],l[2],[x[i,j]*identity_matrix(F,l[1]) for i in 1:l[2] for j in 1:l[2]])
+         z = insert_block(identity_matrix(F,n),z,pos,pos)
+         listgens = cat(listgens,[z]; dims=1)
+      end
+      if l[1]>1
+         for i in 1:l[1]-1
+         for j in 1:degree(F)
+            z = identity_matrix(F,l[1])
+            for k in 1:l[1]-i z[k,i+k]=_lambda^j end
+            z = insert_block(identity_matrix(F,n),z,pos,pos)
+            listgens = cat(listgens,[z]; dims=1)
+         end
+         end
+      end
+      pos += l[1]*l[2]
+   end
+
+   # external diagonal blocks
+   pos=1
+   for i in 1:length(L)-1
+      pos += L[i][1]*L[i][2]
+      # block above diagonal
+      z = identity_matrix(F,n)
+      for j in 1:L[i][1] z[pos-L[i][1]+j-1,pos+L[i+1][1]-L[i][1]+j-1]=1 end
+      listgens = cat(listgens,[z]; dims=1)
+      # block below diagonal
+      z = identity_matrix(F,n)
+      for j in 1:L[i][1] z[pos+j-1,pos-L[i][1]+j-1]=1 end
+      listgens = cat(listgens,[z]; dims=1)
+   end
+
+   return listgens
 end
