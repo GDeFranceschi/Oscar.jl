@@ -11,9 +11,8 @@ function _elem_given_det(x,d)
 end
 
 # returns as matrices
-# TODO: uses gen(F) for a generator of the multiplicative group of F, but it is wrong
 function _gens_for_GL(n::Int, F::Ring)
-   if n==1 return [matrix(F,1,1,[gen(F)])] end
+   if n==1 return [matrix(F,1,1,[primitive_element(F)])] end
    if order(F)==2
       h1 = identity_matrix(F,n)
       h1[1,2] = 1
@@ -22,7 +21,7 @@ function _gens_for_GL(n::Int, F::Ring)
       h2[1,n] = 1
    else
       h1 = identity_matrix(F,n)
-      h1[1,1] = gen(F)
+      h1[1,1] = primitive_element(F)
       h2 = zero_matrix(F,n,n)
       for i in 1:n-1 h2[i+1,i]=-1 end
       h2[1,1] = -1
@@ -36,7 +35,7 @@ end
 # assumes V is sorted (e.g. [1,1,1,2,3,3])
 function _centr_unipotent(F::Ring, V::AbstractVector{Int}) 
    n = sum(V)
-   _lambda = gen(F)  
+   _lambda = gen(F)  # yes, gen(F) is correct; we don't need a primitive element in this case
 
    # L = multiset(V)
    L=[[V[1],1]]
