@@ -13,6 +13,18 @@ function pol_elementary_divisors(A::MatElem{T}) where T
    for i in 1:length(L)
       V[i] = (L[i][2],L[i][3])
    end
+
+# sorting the vector in order to have all equal polynomials in a consecutive bunch
+# and block size in increasing order
+   for i in 1:length(L)-1
+   for j in i+1:length(L)
+      if V[i][1]==V[j][1]
+         V[i+1],V[j] = V[j],V[i+1]
+         if V[i+1][2]<V[i][2] V[i],V[i+1] = V[i+1],V[i]  end
+      end
+   end
+   end
+
    return V
 end
 
@@ -27,13 +39,15 @@ function generalized_jordan_block(f::T, n::Int) where T<:PolyElem
    return JB
 end
 
-# TODO is there a way to accelerate the process?
-function generalized_jordan_form(A::MatElem{T}) where T
+# TODO is there a way to accelerate the process? pol_elementary_divisors and generalized_jordan_block repeat parts of the same code.
+function generalized_jordan_form(A::MatElem{T}; with_pol=false) where T
    V = pol_elementary_divisors(A)
    GJ = diagonal_join([generalized_jordan_block(v[1],v[2]) for v in V])
    a = rational_canonical_form(A)[2]
    gj = rational_canonical_form(GJ)[2]
-   return GJ, gj^-1*a
+   if with_pol return GJ, gj^-1*a, V
+   else return GJ, gj^-1*a
+   end
 end
 
 

@@ -1,4 +1,4 @@
-import Hecke: field_extension
+import Hecke: field_extension, FinField, FinFieldElem
 
 function _change_type(f::PolyElem{T}) where T <: FinFieldElem
    e,p = ispower(order(base_ring(f)))
@@ -7,6 +7,7 @@ function _change_type(f::PolyElem{T}) where T <: FinFieldElem
    return sum([t^i*F(lift(coeff(f,i))) for i in 0:degree(f)])
 end
 
+# return a generator for the unit group of F
 function _centralizer(f::PolyElem{T}) where T <: FinFieldElem
   if typeof(f)!=fq_nmod_poly && typeof(f)!=fq_poly
      f = _change_type(f)
