@@ -171,7 +171,7 @@ end
 
 
 function _centralizer(x::MatElem)
-   _,cm,ED = generalized_jordan_form(x; with_pol=true)
+   _,cbm,ED = generalized_jordan_form(x; with_pol=true)    # cbm = change basis matrix
    n=nrows(x)
    listgens = MatElem[]
 
@@ -189,12 +189,33 @@ function _centralizer(x::MatElem)
          end
          pos += degree(f)*sum(V)
          i+=1
-         if i<length(ED)
+         if i<=length(ED)
             f = ED[i][1]
             V = [ED[i][2]]
          end
       end
    end
 
-   return listgens
+   return listgens, cbm
+end
+
+
+
+########################################################################
+#
+# User level functions
+#
+########################################################################
+
+pol_elementary_divisors(x::MatrixGroupElem) = pol_elementary_divisors(x.elm)
+
+function centralizer(G::MatrixGroup, x::MatrixGroupElem)
+   if isdefined(G,:descr) && G.descr==:GL
+      V,a = _centralizer(x.elm)
+      am = inv(a)
+      L = [G(am*v*a) for v in V]
+      return MatrixGroup(G.deg, G.ring, L), Nothing          # do not return the embedding of the centralizer into G to do not compute G.X
+   end
+   C = GAP.Globals.Centralizer(G.X, x.X)
+   return _as_subgroup(G, C)
 end
