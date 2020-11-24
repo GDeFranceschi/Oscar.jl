@@ -10,25 +10,17 @@ function _elem_given_det(x,d)
    return prod([C[i]^Int(l[i]) for i in 1:ngens(C)])
 end
 
+
+
+########################################################################
+#
+# Centralizer in GL
+#
+########################################################################
+
+
 # returns as matrices
-function _gens_for_GL(n::Int, F::Ring)
-   if n==1 return [matrix(F,1,1,[primitive_element(F)])] end
-   if order(F)==2
-      h1 = identity_matrix(F,n)
-      h1[1,2] = 1
-      h2 = zero_matrix(F,n,n)
-      for i in 1:n-1 h2[i+1,i]=1 end
-      h2[1,n] = 1
-   else
-      h1 = identity_matrix(F,n)
-      h1[1,1] = primitive_element(F)
-      h2 = zero_matrix(F,n,n)
-      for i in 1:n-1 h2[i+1,i]=-1 end
-      h2[1,1] = -1
-      h2[1,n] = 1
-   end
-   return h1,h2      
-end
+_gens_for_GL(n::Int, F::Ring) = _gens_for_sub_GL(n, F, 1)
 
 # returns as matrices
 # does the matrix above with F = F[x]/(f), but every entry is replaced by a diagonal join of D corresponding blocks
@@ -199,6 +191,64 @@ function _centralizer(x::MatElem)
    return listgens, cbm
 end
 
+
+
+
+########################################################################
+#
+# Generators for SL  TODO  all of this does not work yet
+#
+########################################################################
+
+# return subgroup of GL(n,F) of index d
+# returns as matrices
+function _gens_for_sub_GL(n::Int, F::Ring, d::Int)
+   @assert mod(size(F)-1,d)==0 "Index must divide q-1"
+   if n==1 return [matrix(F,1,1,[primitive_element(F)^d])] end
+   if order(F)==2
+      h1 = identity_matrix(F,n)
+      h1[1,2] = 1
+      h2 = zero_matrix(F,n,n)
+      for i in 1:n-1 h2[i+1,i]=1 end
+      h2[1,n] = 1
+   else
+      h1 = identity_matrix(F,n)
+      h1[1,1] = primitive_element(F)
+      h1[2,2] = primitive_element(F)^(size(F)-d-2)
+      h2 = zero_matrix(F,n,n)
+      for i in 1:n-1 h2[i+1,i]=-1 end
+      h2[1,1] = -1
+      h2[1,n] = 1
+   end
+   return h1,h2      
+end
+
+_gens_for_SL(n::Int, F::Ring) = _gens_for_sub_GL(n, F, Int(size(F))-1)
+
+# returns as matrices
+# return subgroup of GL(n,F) of index d
+# does the matrix above with F = F[x]/(f), but every entry is replaced by a diagonal join of D corresponding blocks
+# ASSUMPTION: deg(f) > 1
+function _gens_for_sub_GL_matrix(f::PolyElem, n::Int, F::Ring, d::Int; D=1)
+   q = size(F)^degree(f)
+   @assert mod(q-1,d)==0 "Index must divide q-1"
+   C = companion_matrix(f)
+   CP = evaluate(_centralizer(f),C)            # matrix of maximal order in the centralizer of the companion matrix
+
+   if n==1 return [diagonal_join([CP^d for i in 1:D])] end
+   h1 = identity_matrix(F,n*degree(f)*D)
+   insert_block!(h1,diagonal_join([CP for i in 1:D]),1,1)
+print(q-2-d)
+   CP=CP^(q-2-d)
+   insert_block!(h1,diagonal_join([CP for i in 1:D]),D*degree(f)+1,D*degree(f)+1)
+   h2 = zero_matrix(F,n*degree(f)*D,n*degree(f)*D)
+   for i in 1:(n-1)*degree(f)*D h2[i+degree(f)*D,i]=-1 end
+   for i in 1:degree(f)*D
+      h2[i,i]=-1
+      h2[i,i+(n-1)*degree(f)*D]=1
+   end
+   return h1,h2      
+end
 
 
 ########################################################################
