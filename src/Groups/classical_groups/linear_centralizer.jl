@@ -20,7 +20,25 @@ end
 
 
 # returns as matrices
-_gens_for_GL(n::Int, F::Ring) = _gens_for_sub_GL(n, F, 1)
+function _gens_for_GL(n::Int, F::Ring)
+   n !=1 || return matrix(F,1,1,[primitive_element(F)])
+   if order(F)==2
+      h1 = identity_matrix(F,n)
+      h1[1,2] = 1
+      h2 = zero_matrix(F,n,n)
+      h2[1,n] = 1
+      for i in 1:n-1 h2[i+1,i] = -1 end
+      return h1,h2
+   else
+      h1 = identity_matrix(F,n)
+      h1[1,1] = primitive_element(F)
+      h2 = zero_matrix(F,n,n)
+      h2[1,1] = -1
+      h2[1,n] = 1
+      for i in 1:n-1 h2[i+1,i] = -1 end
+      return h1,h2
+   end
+end
 
 # returns as matrices
 # does the matrix above with F = F[x]/(f), but every entry is replaced by a diagonal join of D corresponding blocks
@@ -161,7 +179,7 @@ function _centr_block_unipotent(f::PolyElem, F::Ring, V::AbstractVector{Int})
    return listgens
 end
 
-
+# returns the list of generators
 function _centralizer(x::MatElem)
    _,cbm,ED = generalized_jordan_form(x; with_pol=true)    # cbm = change basis matrix
    n=nrows(x)
@@ -194,11 +212,40 @@ end
 
 
 
+
+
 ########################################################################
 #
-# Generators for SL  TODO  all of this does not work yet
+# Generators for SL 
 #
 ########################################################################
+
+
+# returns as matrices
+function _gens_for_SL(n::Int, F::Ring)
+   n !=1 || return matrix(F,1,1,[one(F)])
+   if order(F)==2 || order(F)==3
+      h1 = identity_matrix(F,n)
+      h1[1,2] = 1
+      h2 = zero_matrix(F,n,n)
+      h2[1,n] = 1
+      for i in 1:n-1 h2[i+1,i] = -1 end
+      return h1,h2
+   else
+      h1 = identity_matrix(F,n)
+      h1[1,1] = primitive_element(F)
+      h1[2,2] = inv(primitive_element(F))
+      h2 = zero_matrix(F,n,n)
+      h2[1,1] = -1
+      h2[1,n] = 1
+      for i in 1:n-1 h2[i+1,i] = -1 end
+      return h1,h2
+   end
+end
+
+
+#=    TODO  all of this does not work yet
+
 
 # return subgroup of GL(n,F) of index d
 # returns as matrices
@@ -250,6 +297,7 @@ print(q-2-d)
    return h1,h2      
 end
 
+=#
 
 ########################################################################
 #

@@ -1,5 +1,7 @@
 import Hecke: field_extension, FinField, FinFieldElem
 
+export primitive_element
+
 function _change_type(f::PolyElem{T}) where T <: FinFieldElem
    e,p = ispower(order(base_ring(f)))
    F = GF(Int(p),Int(e))[1]
@@ -26,6 +28,11 @@ end
 
 # return a primitive element of F, i.e. a group generator for F*
 # TODO: are there faster procedures?
+"""
+    primitive_element(F::FinField)
+
+Return a generator of the multiplicative group of `F`.
+"""
 function primitive_element(F::T) where T <: FinField
    z = gen(F)
    if isprime(order(F)) return z end
