@@ -39,3 +39,15 @@ function primitive_element(F::T) where T <: FinField
    f = _centralizer(defining_polynomial(F))
    return sum([z^i*F(coeff(f,i)) for i in 0:degree(f)])
 end
+
+# TODO very bold discrete log, waiting for a better one. Don't try with large fields!!
+function _disc_log(a,b)
+   done=false
+   for g in 0:order(parent(a))
+      if a^g==b
+         done=true
+         return g
+      end
+   end
+   @assert done "Second element is not a power of the first one"
+end
