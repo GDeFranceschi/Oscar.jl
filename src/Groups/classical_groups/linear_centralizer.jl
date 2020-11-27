@@ -63,7 +63,7 @@ end
 # V = vector of integers of the dimensions of Jordan blocks
 # return the generators for the centralizers of the unipotent element
 # assumes V is sorted (e.g. [1,1,1,2,3,3])
-function _centr_unipotent(F::Ring, V::AbstractVector{Int}) 
+function _centr_unipotent(F::Ring, V::AbstractVector{Int}; isSL=false) 
    n = sum(V)
    _lambda = gen(F)  # yes, gen(F) is correct; we don't need a primitive element in this case
 
@@ -81,7 +81,8 @@ function _centr_unipotent(F::Ring, V::AbstractVector{Int})
    # generators for GL + internal diagonal blocks
    pos=1
    for l in L
-      for x in _gens_for_GL(l[2],F)
+      v_g = isSL ? _gens_for_SL(l[2],F) : _gens_for_GL(l[2],F)
+      for x in v_g
          z = block_matrix(l[2],l[2],[x[i,j]*identity_matrix(F,l[1]) for i in 1:l[2] for j in 1:l[2]])
          z = insert_block(identity_matrix(F,n),z,pos,pos)
          push!(listgens,z)
@@ -121,9 +122,9 @@ end
 # return the generators for the centralizers of the unipotent element
 # assumes V is sorted (e.g. [1,1,1,2,3,3])
 # does the same as above, but every entry is replaced by the corresponding block matrix
-function _centr_block_unipotent(f::PolyElem, F::Ring, V::AbstractVector{Int})
+function _centr_block_unipotent(f::PolyElem, F::Ring, V::AbstractVector{Int}; isSL=false)
    d = degree(f)
-   d>1 || return _centr_unipotent(F,V)
+   d>1 || return _centr_unipotent(F,V; isSL=isSL)
    n = sum(V)*d
    C = companion_matrix(f)
 
@@ -141,7 +142,8 @@ function _centr_block_unipotent(f::PolyElem, F::Ring, V::AbstractVector{Int})
    # generators for GL + internal diagonal blocks
    pos=1
    for l in L
-      for x in _gens_for_GL_matrix(f,l[2],F; D=l[1])
+      v_g = isSL ? _gens_for_SL_matrix(f,l[2],F; D=l[1]) : _gens_for_GL_matrix(f,l[2],F; D=l[1])
+      for x in v_g
          z = insert_block(identity_matrix(F,n),x,pos,pos)
          push!(listgens,z)
       end
@@ -223,7 +225,8 @@ end
 
 # returns as matrices
 function _gens_for_SL(n::Int, F::Ring)
-   n !=1 || return matrix(F,1,1,[one(F)])
+#   n !=1 || return [matrix(F,1,1,[one(F)])]
+   n != 1 || return []
    if order(F)==2 || order(F)==3
       h1 = identity_matrix(F,n)
       h1[1,2] = 1
@@ -234,7 +237,7 @@ function _gens_for_SL(n::Int, F::Ring)
    else
       h1 = identity_matrix(F,n)
       h1[1,1] = primitive_element(F)
-      h1[2,2] = inv(primitive_element(F))
+      h1[2,2] = inv(h1[1,1])
       h2 = zero_matrix(F,n,n)
       h2[1,1] = -1
       h2[1,n] = 1
@@ -243,6 +246,31 @@ function _gens_for_SL(n::Int, F::Ring)
    end
 end
 
+# returns as matrices
+# does the matrix above with F = F[x]/(f), but every entry is replaced by a diagonal join of D corresponding blocks
+# ASSUMPTION: deg(f) > 1
+
+function _gens_for_SL_matrix(f::PolyElem, n::Int, F::Ring; D=1)
+   C = companion_matrix(f)
+   CP = evaluate(_centralizer(f),C)            # matrix of maximal order in the centralizer of the companion matrix
+   CPi = inv(CP)
+
+   #if n==1 return [identity_matrix(F,n*D*degree(f))] end
+   n != 1 || return []
+   h1 = identity_matrix(F,n*degree(f)*D)
+   insert_block!(h1,diagonal_join([CP for i in 1:D]),1,1)
+   insert_block!(h1,diagonal_join([CPi for i in 1:D]),D*degree(f)+1,D*degree(f)+1)
+   h2 = zero_matrix(F,n*degree(f)*D,n*degree(f)*D)
+   for i in 1:(n-1)*degree(f)*D h2[i+degree(f)*D,i]=-1 end
+   for i in 1:degree(f)*D
+      h2[i,i]=-1
+      h2[i,i+(n-1)*degree(f)*D]=1
+   end
+# TODO waiting for a better solution, the h3 generator is necessary because h1,h2 generate just the subgroup of SL(n*deg(f),F) isomorphic to SL(n, F^deg(f))
+   h3 = identity_matrix(F,n*degree(f)*D)
+   insert_block!(h3,diagonal_join([CP^(order(F)-1) for i in 1:D]),1,1)
+   return h1,h2,h3      
+end
 
 # returns the list of generators
 function _centralizer_SL(x::MatElem)
@@ -255,7 +283,7 @@ function _centralizer_SL(x::MatElem)
    pos=1
    f=ED[1][1]
    V=[ED[1][2]]
-   c = evaluate(_centralizer, companion_matrix(f))
+   c = evaluate(_centralizer(f), companion_matrix(f))
    c = c^(_disc_log(det(c),_lambda))  # TODO this _disc_log is bad. Don't try with large fields. 
    block_dim = [[ED[1][2],1,c]]   # list of [d,m,f]  d = dimension of the Jordan block, m = its multiplicity, c = el of max order determinant in centralizer of the companion matrix
    while i <= length(ED)
@@ -266,7 +294,7 @@ function _centralizer_SL(x::MatElem)
          else push!(block_dim, [ED[i][2], 1, c])
          end
       else
-         for z in _centr_block_unipotent(f,base_ring(x),V)
+         for z in _centr_block_unipotent(f,base_ring(x),V; isSL=true)
             push!(listgens, insert_block(identity_matrix(base_ring(x),n),z,pos,pos))
          end
          pos += degree(f)*sum(V)
@@ -274,20 +302,26 @@ function _centralizer_SL(x::MatElem)
          if i<=length(ED)
             f = ED[i][1]
             V = [ED[i][2]]
-            c = evaluate(_centralizer, companion_matrix(f))
+            c = evaluate(_centralizer(f), companion_matrix(f))
             push!(block_dim, [ED[i][2],1,c])
          end
       end
    end
 
    # start general blocks, those which have det=1 globally, but not on every single el.div.
-   Ga = abelian_group([Int(order(base_ring(x)))-1: i in 1:length(block_dim)])
+   Ga = abelian_group([Int(order(base_ring(x)))-1 for i in 1:length(block_dim)])
    Gb = abelian_group(Int(order(base_ring(x)))-1)
    f = hom(Ga,Gb, [Gb[1]*block_dim[i][1] for i in 1:length(block_dim)])
    K,g = kernel(f)
    for k in gens(K)
    if !iszero(g(k))               #TODO just to do not put identity matrices in the list of generators
-      
+      z = identity_matrix(base_ring(x),n)
+      pos = 1
+      for i in 1:length(block_dim)
+         insert_block!(z,diagonal_join([block_dim[i][3]^Int(g(k)[i]) for j in 1:block_dim[i][1]]),pos,pos)
+         pos += block_dim[i][1]*block_dim[i][2]*nrows(block_dim[i][3])
+      end
+      push!(listgens, z)
    end
    end
 
@@ -313,7 +347,7 @@ function _gens_for_sub_GL(n::Int, F::Ring, d::Int)
    else
       h1 = identity_matrix(F,n)
       h1[1,1] = primitive_element(F)
-      h1[2,2] = primitive_element(F)^(size(F)-d-2)
+      h1[2,2] = h1[1,1]^(size(F)-d-2)
       h2 = zero_matrix(F,n,n)
       for i in 1:n-1 h2[i+1,i]=-1 end
       h2[1,1] = -1
@@ -360,8 +394,8 @@ end
 pol_elementary_divisors(x::MatrixGroupElem) = pol_elementary_divisors(x.elm)
 
 function centralizer(G::MatrixGroup, x::MatrixGroupElem)
-   if isdefined(G,:descr) && G.descr==:GL
-      V,a = _centralizer_GL(x.elm)
+   if isdefined(G,:descr) && (G.descr==:GL || G.descr==:SL)
+      V,a = G.descr==:GL ? _centralizer_GL(x.elm) : _centralizer_SL(x.elm)
       am = inv(a)
       L = [G(am*v*a) for v in V]
       return MatrixGroup(G.deg, G.ring, L), Nothing          # do not return the embedding of the centralizer into G to do not compute G.X

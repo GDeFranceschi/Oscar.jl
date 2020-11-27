@@ -26,6 +26,8 @@ function _centralizer(f::PolyElem{T}) where T <: FinFieldElem
   return mL\g
 end
 
+evaluate(f::PolyElem, x::MatElem) = sum([x^i*base_ring(x)(coeff(f,i)) for i in 0:degree(f)])
+
 # return a primitive element of F, i.e. a group generator for F*
 # TODO: are there faster procedures?
 """
