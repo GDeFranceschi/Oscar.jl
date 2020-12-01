@@ -1,5 +1,5 @@
 import AbstractAlgebra: MatElem, matrix, MatSpace, parent_type, Ring, RingElem
-import Hecke: base_ring, det, fq_nmod, FqNmodFiniteField, nrows, tr, trace
+import Hecke: base_ring, det, fmpz, fq_nmod, FqNmodFiniteField, nrows, tr, trace
 import GAP: FFE
 
 export
@@ -36,6 +36,7 @@ mutable struct MatrixGroup{RE<:RingElem, T<:MatElem{RE}} <: GAPGroup
    descr::Symbol                       # e.g. GL, SL, symbols for isometry groups
    ring_iso::GenRingIso
    mat_iso::GenMatIso
+   order::fmpz
    AbstractAlgebra.@declare_other
 
    MatrixGroup(m::Int, F::Ring) = new{elem_type(F), dense_matrix_type(elem_type(F))}(m,F)
@@ -192,6 +193,10 @@ function Base.getproperty(G::MatrixGroup, sym::Symbol)
          V = GAP.julia_to_gap([g.X for g in G.gens])
          G.X=GAP.Globals.Group(V)
       end
+
+   elseif sym === :order
+      if isdefined(G, :order) return getfield(G, :order) end
+      G.order = fmpz(GAP.Globals.Size(G.X))
 
    elseif sym === :gens
       if !isdefined(G, :X)
@@ -484,7 +489,7 @@ Base.getindex(G::MatrixGroup, i::Int) = gen(G, i)
 
 ngens(G::MatrixGroup) = length(G.gens)
 
-order(G::MatrixGroup) = GAP.Globals.Order(G.X)
+order(G::MatrixGroup) = G.order
 
 ########################################################################
 #

@@ -14,6 +14,28 @@ end
 
 ########################################################################
 #
+# Orders
+#
+########################################################################
+
+function _GL_order(n::Int, q::fmpz)
+   res = q^div(n*(n-1),2)
+   for i in 1:n res *= (q^i-1) end
+   return res
+end
+
+_GL_order(n::Int, F::Ring) = _GL_order(n, order(F))
+
+function _SL_order(n::Int, q::fmpz)
+   res = q^div(n*(n-1),2)
+   for i in 2:n res *= (q^i-1) end
+   return res
+end
+
+_SL_order(n::Int, F::Ring) = _SL_order(n, order(F))
+
+########################################################################
+#
 # Centralizer in GL
 #
 ########################################################################
@@ -114,7 +136,19 @@ function _centr_unipotent(F::Ring, V::AbstractVector{Int}; isSL=false)
       push!(listgens,z)
    end
 
-   return listgens
+   # cardinality
+   res = prod([_GL_order(l[2],F) for l in L])
+   exp = fmpz(0)
+   for i in 1:length(L)-1
+   for j in i+1:length(L)
+      exp += L[i][1]*L[i][2]*L[j][2]
+   end
+   end
+   exp *= 2
+   exp += sum([(L[i][1]-1)*L[i][2]^2 for i in 1:length(L)])
+   res *= order(F)^exp
+
+   return listgens, res
 end
 
 
@@ -178,7 +212,20 @@ function _centr_block_unipotent(f::PolyElem, F::Ring, V::AbstractVector{Int}; is
       push!(listgens,z)
    end
 
-   return listgens
+   # cardinality
+   res = prod([_GL_order(l[2],order(F)^degree(f)) for l in L])
+   exp = fmpz(0)
+   for i in 1:length(L)-1
+   for j in i+1:length(L)
+      exp += L[i][1]*L[i][2]*L[j][2]
+   end
+   end
+   exp *= 2
+   exp += sum([(L[i][1]-1)*L[i][2]^2 for i in 1:length(L)])
+   exp *= degree(f)
+   res *= order(F)^exp
+
+   return listgens, res
 end
 
 # returns the list of generators
@@ -186,6 +233,7 @@ function _centralizer_GL(x::MatElem)
    _,cbm,ED = generalized_jordan_form(x; with_pol=true)    # cbm = change basis matrix
    n=nrows(x)
    listgens = MatElem[]
+   res = fmpz(1)
 
    i=1
    pos=1
@@ -196,9 +244,11 @@ function _centralizer_GL(x::MatElem)
          i+=1
          push!(V,ED[i][2])
       else
-         for z in _centr_block_unipotent(f,base_ring(x),V)
+         L = _centr_block_unipotent(f,base_ring(x),V)
+         for z in L[1]
             push!(listgens, insert_block(identity_matrix(base_ring(x),n),z,pos,pos))
          end
+         res *= L[2]
          pos += degree(f)*sum(V)
          i+=1
          if i<=length(ED)
@@ -208,7 +258,7 @@ function _centralizer_GL(x::MatElem)
       end
    end
 
-   return listgens, cbm
+   return listgens, res, cbm
 end
 
 
@@ -278,6 +328,8 @@ function _centralizer_SL(x::MatElem)
    n=nrows(x)
    listgens = MatElem[]
    _lambda = primitive_element(base_ring(x))
+   res = fmpz(1)
+   ind = fmpz(0)
 
    i=1
    pos=1
@@ -294,9 +346,12 @@ function _centralizer_SL(x::MatElem)
          else push!(block_dim, [ED[i][2], 1, c])
          end
       else
-         for z in _centr_block_unipotent(f,base_ring(x),V; isSL=true)
+         L = _centr_block_unipotent(f,base_ring(x),V; isSL=true)
+         for z in L[1]
             push!(listgens, insert_block(identity_matrix(base_ring(x),n),z,pos,pos))
          end
+         ind = gcd(ind, gcd([b[1] for b in block_dim]))
+         res *= L[2]
          pos += degree(f)*sum(V)
          i+=1
          if i<=length(ED)
@@ -325,7 +380,10 @@ function _centralizer_SL(x::MatElem)
    end
    end
 
-   return listgens, cbm
+   ind = gcd(ind, order(base_ring(x))-1)
+   res = div(res, order(base_ring(x))-1)
+   res *= ind
+   return listgens, res, cbm
 end
 
 
@@ -395,10 +453,12 @@ pol_elementary_divisors(x::MatrixGroupElem) = pol_elementary_divisors(x.elm)
 
 function centralizer(G::MatrixGroup, x::MatrixGroupElem)
    if isdefined(G,:descr) && (G.descr==:GL || G.descr==:SL)
-      V,a = G.descr==:GL ? _centralizer_GL(x.elm) : _centralizer_SL(x.elm)
+      V,card,a = G.descr==:GL ? _centralizer_GL(x.elm) : _centralizer_SL(x.elm)
       am = inv(a)
       L = [G(am*v*a) for v in V]
-      return MatrixGroup(G.deg, G.ring, L), Nothing          # do not return the embedding of the centralizer into G to do not compute G.X
+      H = MatrixGroup(G.deg, G.ring, L)
+      H.order = card
+      return H, Nothing          # do not return the embedding of the centralizer into G to do not compute G.X
    end
    C = GAP.Globals.Centralizer(G.X, x.X)
    return _as_subgroup(G, C)

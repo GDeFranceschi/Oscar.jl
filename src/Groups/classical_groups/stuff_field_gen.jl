@@ -1,4 +1,4 @@
-import Hecke: field_extension, FinField, FinFieldElem
+import Hecke: evaluate, field_extension, FinField, FinFieldElem
 
 export primitive_element
 

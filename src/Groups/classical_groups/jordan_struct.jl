@@ -146,15 +146,3 @@ function block_matrix(m::Int, n::Int, V::AbstractVector{T}) where T <: MatElem
    end
    return B
 end
-
-
-
-########################################################################
-#
-# Misc
-#
-########################################################################
-
-function evaluate(f::PolyElem, x::MatElem)
-   return sum([coefficients(f)[i]*x^i for i in 0:degree(f)])
-end
