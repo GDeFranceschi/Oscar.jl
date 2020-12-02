@@ -196,7 +196,7 @@ function Base.getproperty(G::MatrixGroup, sym::Symbol)
 
    elseif sym === :order
       if isdefined(G, :order) return getfield(G, :order) end
-      G.order = fmpz(GAP.Globals.Size(G.X))
+      G.order = fmpz(BigInt(GAP.Globals.Size(G.X)))
 
    elseif sym === :gens
       if !isdefined(G, :X)
