@@ -74,5 +74,19 @@ function isconjugate_gl(G::MatrixGroup, x::MatrixGroupElem, y::MatrixGroupElem)
 end
 
 
+function partitions(n::Int, m::Int)         # partitions where the biggest block is at most m
+   if n==0 return [Int[]] end
+   if m==1 return [[1 for i in 1:n]] end
+   L = []
+   for i in 0:div(n,m)
+      t = [m for i in 1:i]
+      for k in partitions(n-m*i, m-1)
+         push!(L, vcat(t,k))
+      end
+   end
 
+   return L
+end
+
+partitions(n::Int) = partitions(n,n)
 
