@@ -68,6 +68,8 @@ function __init__()
         (GAP.Globals.IsMatrixGroup, MatrixGroup),
         (GAP.Globals.IsFpGroup, FPGroup),
     ])
+
+  GAP.Packages.load("forms")
 end
 
 is_dev = false

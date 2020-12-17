@@ -19,8 +19,6 @@ mutable struct SesquilinearForm{T<:RingElem}
 end
 
 
-GAP.Packages.load("forms")
-
 """
     preserved_quadratic_forms(G::MatrixGroup)
 Return a generating set for the vector space of quadratic forms preserved by `G`.
