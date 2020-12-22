@@ -1,4 +1,4 @@
-import AbstractAlgebra: FieldElem
+import AbstractAlgebra: FieldElem, Generic.MPoly
 import Hecke: gram_matrix
 
 export 
@@ -6,6 +6,7 @@ export
     hermitian_form,
     preserved_quadratic_forms,
     preserved_sesquilinear_forms,
+    quadratic_form,
     SesquilinearForm,
     symmetric_form
 
@@ -16,6 +17,14 @@ mutable struct SesquilinearForm{T<:RingElem}
    X::GapObj
 
    SesquilinearForm(B::MatElem{T},sym) where T = new{T}(B,sym)
+
+   function SesquilinearForm(f::MPoly{T},sym) where T
+      @assert sym==:quadratic "Only quadratic forms are described by polynomials"
+      r = new{T}()
+      r.pol = f
+      r.descr = :quadratic
+      return r
+   end
 end
 
 
@@ -100,6 +109,39 @@ function hermitian_form(B::MatElem{T}; check=true) where T <: FieldElem
    return f
 end
 
+# turns the matrix of a quadratic form into an upper triangular matrix of the same form
+# (two matrices A,B represent the same quadratic form iff A-B is skew-symmetric)
+function _upper_triangular_version(C::MatElem)
+   B = deepcopy(C)
+   for i in 1:nrows(B)
+   for j in i+1:nrows(B)
+      B[i,j]+=B[j,i]
+      B[j,i]=0
+   end
+   end
+   return B
+end
+
+"""
+    quadratic_form(B::MatElem{T})
+Return the quadratic form with Gram matrix `B`.
+"""
+function quadratic_form(B::MatElem{T}; check=true) where T <: FieldElem
+   f = SesquilinearForm(_upper_triangular_version(B), :quadratic)
+   return f
+end
+
+"""
+    quadratic_form(f::MPoly{T})
+Return the quadratic form described by the polynomial `f`. Here, `f` must be a homogeneous polynomial of degree 2.
+"""
+function quadratic_form(f::MPoly{T}; check=true) where T <: FieldElem
+   @assert total_degree(f)==2 "The polynomial must have degree 2"
+   @assert ishomogeneous(f) "The polynomial is not homogeneous"
+   
+   f = SesquilinearForm(f, :quadratic)
+   return f
+end
 
 ########################################################################
 #
@@ -110,7 +152,9 @@ end
 
 function _assign_description(sym::Symbol)
    if sym== :alternating print("Alternating")
+   elseif sym== :hermitian print("Hermitian")
    elseif sym== :symmetric print("Symmetric")
+   elseif sym== :quadratic print("Quadratic")
    else error("unsupported description")
    end
 end
@@ -131,4 +175,47 @@ end
 ########################################################################
 
 gram_matrix(B::SesquilinearForm) = B.matrix
+
+function Base.getproperty(f::SesquilinearForm, sym::Symbol)
+
+   if isdefined(f,sym) return getfield(f,sym) end
+
+   if sym === :matrix && f.descr==:quadratic  # assume only the polynomial is defined
+      d = nvars(parent(f.pol))
+      B = zero_matrix( base_ring(f.pol), d, d )
+      V = collect(exponent_vectors(f.pol))
+      C = collect(coeffs(f.pol))
+      for i in 1:length(V)
+         for j in 1:d
+            if V[i][j] !=0
+               global x = j
+               break
+            end
+         end
+         for j in 1:d
+            if V[i][d+1-j] !=0
+               global y = d+1-j
+               break
+            end
+         end
+         B[x,y] = C[i]
+      end
+      f.matrix = B
+
+   elseif sym === :pol
+      @assert f.descr == :quadratic "Polynomial defined only for quadratic forms"
+      R = PolynomialRing(base_ring(f.matrix), nrows(f.matrix) )[1]
+      p = zero(R)
+      for i in 1:nrows(f.matrix)
+      for j in i:nrows(f.matrix)
+         p += f.matrix[i,j] * R[i]*R[j]
+      end
+      end
+      f.pol = p
+   end
+
+   return getfield(f, sym)
+
+end
+
 
