@@ -1,8 +1,10 @@
 import AbstractAlgebra: FieldElem, Generic.MPoly
-import Hecke: gram_matrix
+import Hecke: base_ring, defining_polynomial, gram_matrix
 
 export 
     alternating_form,
+    corresponding_bilinear_form,
+    corresponding_quadratic_form,
     hermitian_form,
     preserved_quadratic_forms,
     preserved_sesquilinear_forms,
@@ -12,7 +14,7 @@ export
 
 mutable struct SesquilinearForm{T<:RingElem}
    matrix::MatElem{T}
-   descr::Symbol       # quadratic, bilinear or hermitian
+   descr::Symbol       # quadratic, symmetric, alternating or hermitian
    pol::AbstractAlgebra.Generic.MPoly{T}     # only for quadratic forms
    X::GapObj
 
@@ -143,6 +145,7 @@ function quadratic_form(f::MPoly{T}; check=true) where T <: FieldElem
    return f
 end
 
+
 ########################################################################
 #
 # Show
@@ -168,13 +171,72 @@ end
 
 
 
+
+########################################################################
+#
+# Basic
+#
+########################################################################
+
+function ==(B::SesquilinearForm, C::SesquilinearForm)
+   if isdefined(B,:pol) && isdefined(C,:pol) return B.pol==C.pol
+   else return B.matrix==C.matrix && B.descr==C.descr
+   end
+end
+
+function base_ring(B::SesquilinearForm)
+   if isdefined(B,:matrix) return base_ring(B.matrix)
+   else return base_ring(B.pol)
+   end
+end
+
+"""
+    corresponding_bilinear_form(Q::SesquilinearForm)
+Given a quadratic form `Q`, return the bilinear form `B` defined by `B(u,v) = Q(u+v)-Q(u)-Q(v)`.
+"""
+function corresponding_bilinear_form(B::SesquilinearForm)
+   B.descr==:quadratic || throw(ArgumentError("The form must be a quadratic form"))
+   M = B.matrix+transpose(B.matrix)
+   if characteristic(base_ring(B))==2 return alternating_form(M)
+   else return symmetric_form(M)
+   end
+end
+
+"""
+    corresponding_quadratic_form(Q::SesquilinearForm)
+Given a symmetric form `f`, returns the quadratic form `Q` defined by `Q(v) = f(v,v)/2`. It is defined only in odd characteristic.
+"""
+function corresponding_quadratic_form(B::SesquilinearForm)
+   B.descr==:symmetric || throw(ArgumentError("The form must be a symmetric form"))
+   characteristic(base_ring(B))!=2 || throw(ArgumentError("Corresponding quadratic form not uniquely determined"))
+   M = B.matrix
+   l = inv(base_ring(B)(2))
+   for i in 1:nrows(M)
+      for j in i+1:nrows(M)
+         M[j,i]=0
+      end
+      M[i,i]*=l
+   end
+   return quadratic_form(M)
+end
+
 ########################################################################
 #
 # Fields of the variable
 #
 ########################################################################
 
+"""
+    gram_matrix(B::SesquilinearForm)
+Return the Gram matrix of a sesquilinear or quadratic form `B`.
+"""
 gram_matrix(B::SesquilinearForm) = B.matrix
+
+"""
+    defining_polynomial(f::SesquilinearForm)
+Return the polynomial that defines the quadratic form `f`.
+"""
+defining_polynomial(B::SesquilinearForm) = B.pol
 
 function Base.getproperty(f::SesquilinearForm, sym::Symbol)
 
