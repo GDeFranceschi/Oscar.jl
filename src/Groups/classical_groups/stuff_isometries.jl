@@ -6,6 +6,10 @@ export
     corresponding_bilinear_form,
     corresponding_quadratic_form,
     hermitian_form,
+    isalternating_form,
+    ishermitian_form,
+    isquadratic_form,
+    issymmetric_form,
     preserved_quadratic_forms,
     preserved_sesquilinear_forms,
     quadratic_form,
@@ -29,6 +33,80 @@ mutable struct SesquilinearForm{T<:RingElem}
    end
 end
 
+
+
+
+
+########################################################################
+#
+# Properties
+#
+########################################################################
+
+
+# return whether B is skew-symmetric matrix
+function _is_skew_symmetric(B::MatElem)
+   for i in 1:nrows(B)
+   for j in i:nrows(B)
+      if B[i,j] != -B[j,i] return false end
+   end
+   end
+   if characteristic(base_ring(B))==2
+      for i in 1:nrows(B)
+         if B[i,i]!=0 return false end
+      end
+   end
+
+   return true
+end
+
+# return whether B is symmetric matrix
+function _is_symmetric(B::MatElem)
+   for i in 1:nrows(B)
+   for j in i+1:nrows(B)
+      if B[i,j]!=B[j,i] return false end
+   end
+   end
+
+   return true
+end
+
+# return whether B is hermitian matrix
+function _is_hermitian(B::MatElem)
+   if isodd(degree(base_ring(B))) return false end
+   e = div(degree(base_ring(B)),2)
+   for i in 1:nrows(B)
+   for j in i:nrows(B)
+      if B[i,j]!=frobenius(B[j,i],e) return false end
+   end
+   end
+
+   return true
+end
+
+"""
+    isalternating_form(f::SesquilinearForm)
+Return whether the form `f` is an alternating form.
+"""
+isalternating_form(f::SesquilinearForm) = f.descr==:alternating
+
+"""
+    ishermitian_form(f::SesquilinearForm)
+Return whether the form `f` is a hermitian form.
+"""
+ishermitian_form(f::SesquilinearForm) = f.descr==:hermitian
+
+"""
+    isquadratic_form(f::SesquilinearForm)
+Return whether the form `f` is a quadratic form.
+"""
+isquadratic_form(f::SesquilinearForm) = f.descr==:quadratic
+
+"""
+    issymmetric_form(f::SesquilinearForm)
+Return whether the form `f` is a symmetric form.
+"""
+issymmetric_form(f::SesquilinearForm) = f.descr==:symmetric
 
 """
     preserved_quadratic_forms(G::MatrixGroup)
@@ -56,22 +134,63 @@ function preserved_sesquilinear_forms(G::MatrixGroup)
    return [G.mat_iso(GAP.Globals.GramMatrix(L[i])) for i in 1:length(L)]
 end
 
+
+
+
+########################################################################
+#
+# Constructors
+#
+########################################################################
+
+# return whether B is skew-symmetric matrix
+function _is_skew_symmetric(B::MatElem)
+   for i in 1:nrows(B)
+   for j in i:nrows(B)
+      if B[i,j] != -B[j,i] return false end
+   end
+   end
+   if characteristic(base_ring(B))==2
+      for i in 1:nrows(B)
+         if B[i,i]!=0 return false end
+      end
+   end
+
+   return true
+end
+
+# return whether B is symmetric matrix
+function _is_symmetric(B::MatElem)
+   for i in 1:nrows(B)
+   for j in i+1:nrows(B)
+      if B[i,j]!=B[j,i] return false end
+   end
+   end
+
+   return true
+end
+
+# return whether B is hermitian matrix
+function _is_hermitian(B::MatElem)
+   if isodd(degree(base_ring(B))) return false end
+   e = div(degree(base_ring(B)),2)
+   for i in 1:nrows(B)
+   for j in i:nrows(B)
+      if B[i,j]!=frobenius(B[j,i],e) return false end
+   end
+   end
+
+   return true
+end
+
+
 """
     alternating_form(B::MatElem{T}; check=true)
 Return the alternating form with Gram matrix `B`. If `check` is set as `false`, it does not check whether the matrix is skew-symmetric.
 """
 function alternating_form(B::MatElem{T}; check=true) where T <: FieldElem
    if check
-      for i in 1:nrows(B)
-      for j in i:nrows(B)
-         @assert B[i,j]==-B[j,i] "The matrix is not skew-symmetric"
-      end
-      end
-      if characteristic(base_ring(B))==2
-         for i in 1:nrows(B)
-            @assert B[i,i]==0 "The matrix is not skew-symmetric"
-         end
-      end
+      @assert _is_skew_symmetric(B) "The matrix is not skew-symmetric"
    end
    f = SesquilinearForm(B, :alternating)
    return f
@@ -83,11 +202,7 @@ Return the symmetric form with Gram matrix `B`. If `check` is set as `false`, it
 """
 function symmetric_form(B::MatElem{T}; check=true) where T <: FieldElem
    if check
-      for i in 1:nrows(B)
-      for j in i+1:nrows(B)
-         @assert B[i,j]==B[j,i] "The matrix is not symmetric"
-      end
-      end
+      @assert _is_symmetric(B) "The matrix is not symmetric"
    end
    f = SesquilinearForm(B, :symmetric)
    return f
@@ -99,13 +214,7 @@ Return the hermitian form with Gram matrix `B`. If `check` is set as `false`, it
 """
 function hermitian_form(B::MatElem{T}; check=true) where T <: FieldElem
    if check
-      @assert iseven(degree(base_ring(B))) "The matrix is not hermitian"
-      e = div(degree(base_ring(B)),2)
-      for i in 1:nrows(B)
-      for j in i:nrows(B)
-         @assert B[i,j]==frobenius(B[j,i],e) "The matrix is not hermitian"
-      end
-      end
+      @assert _is_hermitian(B) "The matrix is not hermitian"
    end
    f = SesquilinearForm(B, :hermitian)
    return f
@@ -178,11 +287,7 @@ end
 #
 ########################################################################
 
-function ==(B::SesquilinearForm, C::SesquilinearForm)
-   if isdefined(B,:pol) && isdefined(C,:pol) return B.pol==C.pol
-   else return B.matrix==C.matrix && B.descr==C.descr
-   end
-end
+==(B::SesquilinearForm, C::SesquilinearForm) = B.matrix==C.matrix && B.descr==C.descr
 
 function base_ring(B::SesquilinearForm)
    if isdefined(B,:matrix) return base_ring(B.matrix)
@@ -209,7 +314,7 @@ Given a symmetric form `f`, returns the quadratic form `Q` defined by `Q(v) = f(
 function corresponding_quadratic_form(B::SesquilinearForm)
    B.descr==:symmetric || throw(ArgumentError("The form must be a symmetric form"))
    characteristic(base_ring(B))!=2 || throw(ArgumentError("Corresponding quadratic form not uniquely determined"))
-   M = B.matrix
+   M = deepcopy(B.matrix)
    l = inv(base_ring(B)(2))
    for i in 1:nrows(M)
       for j in i+1:nrows(M)
@@ -219,6 +324,8 @@ function corresponding_quadratic_form(B::SesquilinearForm)
    end
    return quadratic_form(M)
 end
+
+
 
 ########################################################################
 #
