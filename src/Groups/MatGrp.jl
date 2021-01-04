@@ -113,6 +113,8 @@ ring_elem_type(::Type{MatrixGroup{S,T}}) where {S,T} = S
 mat_elem_type(::Type{MatrixGroup{S,T}}) where {S,T} = T
 _gap_filter(::Type{<:MatrixGroup}) = GAP.Globals.IsMatrixGroup
 
+
+
 ########################################################################
 #
 # Basic

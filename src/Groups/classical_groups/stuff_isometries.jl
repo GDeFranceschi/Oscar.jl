@@ -143,46 +143,6 @@ end
 #
 ########################################################################
 
-# return whether B is skew-symmetric matrix
-function _is_skew_symmetric(B::MatElem)
-   for i in 1:nrows(B)
-   for j in i:nrows(B)
-      if B[i,j] != -B[j,i] return false end
-   end
-   end
-   if characteristic(base_ring(B))==2
-      for i in 1:nrows(B)
-         if B[i,i]!=0 return false end
-      end
-   end
-
-   return true
-end
-
-# return whether B is symmetric matrix
-function _is_symmetric(B::MatElem)
-   for i in 1:nrows(B)
-   for j in i+1:nrows(B)
-      if B[i,j]!=B[j,i] return false end
-   end
-   end
-
-   return true
-end
-
-# return whether B is hermitian matrix
-function _is_hermitian(B::MatElem)
-   if isodd(degree(base_ring(B))) return false end
-   e = div(degree(base_ring(B)),2)
-   for i in 1:nrows(B)
-   for j in i:nrows(B)
-      if B[i,j]!=frobenius(B[j,i],e) return false end
-   end
-   end
-
-   return true
-end
-
 
 """
     alternating_form(B::MatElem{T}; check=true)
@@ -275,7 +235,7 @@ end
 function Base.show(io::IO, B::SesquilinearForm)
    _assign_description(B.descr)
    println(" form with Gram matrix ")
-   show(io, B.matrix)
+   show(io, "text/plain", B.matrix)
 end
 
 
@@ -287,6 +247,7 @@ end
 #
 ########################################################################
 
+#TODO: checking whether two quadratic forms coincide by checking their polynomials is not possible yet.
 ==(B::SesquilinearForm, C::SesquilinearForm) = B.matrix==C.matrix && B.descr==C.descr
 
 function base_ring(B::SesquilinearForm)
@@ -388,3 +349,23 @@ function Base.getproperty(f::SesquilinearForm, sym::Symbol)
 end
 
 
+
+########################################################################
+#
+# Operations
+#
+########################################################################
+
+function Base.:*(f::SesquilinearForm, l::FieldElem)
+   l !=0 || throw(ArgumentError("Zero is not admitted"))
+   parent(l)==base_ring(f) || throw(ArgumentError("The scalar does not belong to the base ring of the form"))
+   if !isdefined(f,:matrix)
+      return SesquilinearForm(l*f.pol, f.descr)
+   else
+      g = SesquilinearForm(l*f.matrix, f.descr)
+      if isdefined(f,:pol) g.pol=f.pol end
+      return g
+   end
+end
+
+Base.:*(l::FieldElem, f::SesquilinearForm) = f*l
