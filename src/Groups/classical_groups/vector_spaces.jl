@@ -1,6 +1,6 @@
 import AbstractAlgebra: FieldElem
 
-Base.getindex(V::AbstractAlgebra.Generic.FreeModule, i::Int) = gens(G, i)
+Base.getindex(V::AbstractAlgebra.Generic.FreeModule, i::Int) = gen(V, i)
 
 # this just allows to write V([1,z,0]) instead of V([F(1),z,F(0)])
 function (V::AbstractAlgebra.Generic.FreeModule)(l::Array{T,1}) where T

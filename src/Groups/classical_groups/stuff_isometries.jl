@@ -16,11 +16,19 @@ export
     SesquilinearForm,
     symmetric_form
 
+
+
+# descr is always defined
+# matrix is always defined except when descr="quadratic"; in such a case, at least one of matrix and pol is defined
+# NOTE: the fields ring_iso and mat_iso are always defined if the field X is
+
 mutable struct SesquilinearForm{T<:RingElem}
    matrix::MatElem{T}
    descr::Symbol       # quadratic, symmetric, alternating or hermitian
    pol::AbstractAlgebra.Generic.MPoly{T}     # only for quadratic forms
    X::GapObj
+   ring_iso::GenRingIso
+   mat_iso::GenMatIso
 
    SesquilinearForm(B::MatElem{T},sym) where T = new{T}(B,sym)
 
@@ -306,6 +314,16 @@ Return the polynomial that defines the quadratic form `f`.
 """
 defining_polynomial(B::SesquilinearForm) = B.pol
 
+
+function assign_from_description(f::SesquilinearForm)
+   if f.descr==:quadratic f.X=GAP.Globals.QuadraticFormByMatrix(f.mat_iso(f.matrix))
+   elseif f.descr==:symmetric || f.descr==:alternating f.X=GAP.Globals.BilinearFormByMatrix(f.mat_iso(f.matrix))
+   elseif f.descr==:hermitian f.X=GAP.Globals.HermitianFormByMatrix(f.mat_iso(f.matrix),f.ring_iso.codomain)
+   else error("unsupported description")
+   end
+end
+
+
 function Base.getproperty(f::SesquilinearForm, sym::Symbol)
 
    if isdefined(f,sym) return getfield(f,sym) end
@@ -342,6 +360,22 @@ function Base.getproperty(f::SesquilinearForm, sym::Symbol)
       end
       end
       f.pol = p
+
+   elseif sym === :mat_iso || sym === :ring_iso
+      fm = gen_mat_iso(nrows(f.matrix), base_ring(f.matrix))
+      f.ring_iso=fm.fr
+      f.mat_iso=fm
+
+   elseif sym == :X
+      if !isdefined(f, :X)
+         if !isdefined(f,:ring_iso)
+            fm = gen_mat_iso(nrows(f.matrix), base_ring(f.matrix))
+            f.ring_iso=fm.fr
+            f.mat_iso=fm
+         end
+         assign_from_description(f)
+      end
+
    end
 
    return getfield(f, sym)
