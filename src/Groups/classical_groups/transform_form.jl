@@ -1,3 +1,4 @@
+import AbstractAlgebra: Field
 
 #return true, m if f and g are congruent, and m is such that g = mfm*
 function iscongruent(f::SesquilinearForm, g::SesquilinearForm)
@@ -25,28 +26,42 @@ end
 ###############################################################################################################
 
 # Algorithm
+# based on paper of James Wilson, Optimal algorithms of Gram-Schmidt type
 
 ###############################################################################################################
 
-# TODO to be removed when the complement function is written
-# computes the orthogonal complement (w.r.t the standard inner product) for W in V
+# computes a complement for W in V (i.e. a subspace U of V such that V is direct sum of U and W)
 function complement(V::AbstractAlgebra.Generic.FreeModule{T}, W::AbstractAlgebra.Generic.Submodule{T}) where T <: FieldElem
    @assert issubmodule(V,W) "The second argument is not a subspace of the first one"
 
    e = W.map
-   H = zero_matrix(base_ring(V), dim(W), dim(V))
+   H = zero_matrix(base_ring(V), dim(V), dim(V))
    for i in 1:dim(W)
       v = e(gen(W,i))
       for j in 1:dim(V)  H[i,j] = v[j]   end
    end
-   d, K = kernel(H)
-   _gens = [ sum([K[j,i]*gen(V,j) for j in 1:dim(V)]) for i in 1:d ]
+   d = rank(H)
+   _gens = AbstractAlgebra.Generic.FreeModuleElem{T}[]
+   s = 0      # number of generators for U
+   track = 0
+   while s < dim(V)-d
+      track+=1
+      H[d+s+1,track]=1
+      while rank(H) < d+s+1
+         H[d+s+1,track],H[d+s+1,track+1] = 0,1
+         track+=1
+      end
+      push!(_gens, gen(V,track))
+      s +=1
+   end
+
    return sub(V,_gens)
 end
 
 
+
 # returns C,A,d where B*A = C, C = [C 0] and d = Rank(C)
-function radical(B::MatElem{T}, F::Field, n::Int, m::Int; e=0, Symmetric=false) where T <: FieldElem
+function find_radical(B::MatElem{T}, F::Field, n::Int, m::Int; e=0, Symmetric=false) where T <: FieldElem
 
    V = VectorSpace(F,m);
    K = Symmetric ? kernel(ModuleHomomorphism(V,V,B))[1] : kernel(ModuleHomomorphism(V,V,transpose(B)))[1]
@@ -55,7 +70,7 @@ function radical(B::MatElem{T}, F::Field, n::Int, m::Int; e=0, Symmetric=false) 
    A = zero_matrix(F,m,m)
    for i in 1:d
    for j in 1:m
-      A[i,j] = emb(gen(U,i)[j])
+      A[i,j] = emb(gen(U,i))[j]
    end
    end
    for i in 1:m-d
@@ -64,7 +79,7 @@ function radical(B::MatElem{T}, F::Field, n::Int, m::Int; e=0, Symmetric=false) 
    end
    end
 
-   if Symmetric then
+   if Symmetric
       return A*B*transpose(map(y -> frobenius(y,e),A)), A, d
    else
       A = transpose(A)
@@ -72,3 +87,110 @@ function radical(B::MatElem{T}, F::Field, n::Int, m::Int; e=0, Symmetric=false) 
    end
 
 end
+
+
+
+
+
+# returns D, A such that B*A*ConjugateTranspose(B) = D and 
+# D is diagonal matrix (or with blocks [0 1 s 0])
+# f = dimension of the zero block in B in the isotropic case
+function block_anisotropic_elim(B::MatElem{T}, _type; isotr=false, f=0)  where T <: FieldElem
+
+   d = nrows(B)
+   F = base_ring(B)
+
+   if d in (0,1)
+      return B, identity_matrix(F,d)
+   end
+
+   if _type=="orthogonal"
+      degF=0
+      s=1
+   elseif _type=="symplectic"
+      degF=0
+      s=-1
+   elseif _type=="unitary"
+      degF=div(degree(F),2)
+      s=1
+   end
+
+   # conjugate transpose
+   star(X; exp=degF) = transpose(map(y -> frobenius(y,exp),X))
+
+   if isotr
+      q = characteristic(F)^degF
+      g = d-f
+      U = submatrix(B,1,f+1,f,g)
+      V = submatrix(B,f+1,f+1,g,g)
+      C,A,e = find_radical(U,F,f,g)
+      # I expect C always to be of rank f
+      C = submatrix(C,1,1,f,f)                     
+      Vprime = star(A)*V*A
+      Z = submatrix(Vprime, 1,1,f,f)
+      Y = submatrix(Vprime,f+1,1,g-f,f)
+      Bprime = submatrix(Vprime,f+1,f+1,g-f,g-f)
+      TR = zero_matrix(F,f,f)
+      D = zero_matrix(F,f,f)
+      for i in 1:f
+         D[i,i] = Z[i,i]
+         for j in i+1:f  TR[i,j] = Z[i,j] end
+      end
+      Aarray = MatElem{T}[]  #TODO type?
+      Barray = MatElem{T}[]
+      for i in 1:f
+         alpha = D[i,i]
+         if alpha != 0
+            push!(Barray, matrix(F,2,2,[-alpha^-1,0,0,alpha]))
+            push!(Aarray, matrix(F,2,2,[1,-alpha^-1,0,1]))
+         else
+            push!(Barray, matrix(F,2,2,[0,1,s,0]))
+            push!(Aarray, matrix(F,2,2,[1,0,0,1]))
+         end
+      end
+      B0,A0 = block_anisotropic_elim(Bprime,_type)
+      B1 = diagonal_join(Barray)
+      B1 = diagonal_join(B1,B0)
+      C = C^-1
+      Temp = vcat(C,-TR*C)
+      Temp = vcat(Temp,-Y*C)
+      Temp = hcat(Temp, vcat(zero_matrix(F,f,g),star(A)))
+      P = zero_matrix(F,2*f,2*f)
+      for i in 1:f
+         P[2*i-1,i] = 1
+         P[2*i,i+f] = 1
+      end
+      A1 = diagonal_join(Aarray)*P
+      A1 = diagonal_join(A1,A0)
+      return B1, A1*Temp
+   else
+      c,f = Int(ceil(d/2)), Int(floor(d/2))
+      B0 = submatrix(B,1,1,c,c)
+      U = submatrix(B,c+1,1,f,c)
+      V = submatrix(B,c+1,c+1,f,f)
+      B1,A0,e = find_radical(B0,F,c,c; e=degF, Symmetric=true)
+      B1 = submatrix(B1,1,1,e,e)
+      U = U*star(A0)
+      U1 = submatrix(U,1,1,f,e)
+      U2 = submatrix(U,1,e+1,f,c-e)
+      Z = V-s*U1*B1^-1*star(U1)
+      D1,A1 = block_anisotropic_elim(B1,_type)
+      Temp = zero_matrix(F,d-e,d-e)
+      insert_block!(Temp,s*star(U2),1,c-e+1)
+      insert_block!(Temp,U2,c-e+1,1)
+      insert_block!(Temp,Z,c-e+1,c-e+1)
+      if c-e==0
+         D2,A2 = block_anisotropic_elim(Temp,_type)
+      else
+         D2,A2 = block_anisotropic_elim(Temp, _type; isotr=true, f=c-e)
+      end
+      Temp = hcat(-U1*B1^-1, zero_matrix(F,f,c-e))*A0
+      Temp = vcat(A0,Temp)
+      Temp = insert_block(identity_matrix(F,d),Temp,1,1)
+
+      return diagonal_join(D1,D2), diagonal_join(A1,A2)*Temp
+   end
+end
+
+
+

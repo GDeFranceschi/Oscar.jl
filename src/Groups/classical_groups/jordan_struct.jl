@@ -57,7 +57,7 @@ isunipotent(x::MatrixGroupElem) = isone(x) || ispower(Int(order(x)))[2]==Int(cha
 
 Return the `m x n` submatrix of `A` rooted at `(i,j)`
 """
-function submatrix(A::MatElem, nr::Int, nc::Int, i::Int, j::Int)
+function submatrix(A::MatElem, i::Int, j::Int, nr::Int, nc::Int)
    return matrix(base_ring(A),nr,nc, [A[s,t] for s in i:nr+i-1 for t in j:nc+j-1])
 end
 
