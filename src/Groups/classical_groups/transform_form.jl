@@ -30,11 +30,13 @@ end
 
 ###############################################################################################################
 
+#=
 # computes a complement for W in V (i.e. a subspace U of V such that V is direct sum of U and W)
 function complement(V::AbstractAlgebra.Generic.FreeModule{T}, W::AbstractAlgebra.Generic.Submodule{T}) where T <: FieldElem
    @assert issubmodule(V,W) "The second argument is not a subspace of the first one"
 
    e = W.map
+ 
    H = zero_matrix(base_ring(V), dim(V), dim(V))
    for i in 1:dim(W)
       v = e(gen(W,i))
@@ -57,17 +59,50 @@ function complement(V::AbstractAlgebra.Generic.FreeModule{T}, W::AbstractAlgebra
 
    return sub(V,_gens)
 end
+=#
 
 
+# computes a complement for W in V (i.e. a subspace U of V such that V is direct sum of U and W)
+function complement(V::AbstractAlgebra.Generic.FreeModule{T}, W::AbstractAlgebra.Generic.Submodule{T}) where T <: FieldElem
+   @assert issubmodule(V,W) "The second argument is not a subspace of the first one"
+   if dim(W)==0 return sub(V,basis(V)) end
 
-# returns C,A,d where B*A = C, C = [C 0] and d = Rank(C)
-function find_radical(B::MatElem{T}, F::Field, n::Int, m::Int; e=0, Symmetric=false) where T <: FieldElem
+   e = W.map
 
-   V = VectorSpace(F,m);
-   K = Symmetric ? kernel(ModuleHomomorphism(V,V,B))[1] : kernel(ModuleHomomorphism(V,V,transpose(B)))[1]
-   U,emb = complement(V,K)
+   H = matrix( vcat([e(g) for g in gens(W)], [zero(V) for i in 1:(dim(V)-dim(W)) ]) )
+   d = dim(W)
+   A_left = identity_matrix(base_ring(V), dim(V))
+   A_right = identity_matrix(base_ring(V), dim(V))
+   for rn in 1:dim(W)     # rn = row number
+      cn = rn    # column number
+      while H[rn,cn]==0 cn+=1 end   # bring on the left the first non-zero entry
+      swap_cols!(H,rn,cn)
+      swap_rows!(A_right,rn,cn)
+      for j in rn+1:dim(W)
+         add_row!(H,H[j,rn]*H[rn,rn]^-1,rn,j)
+         add_column!(A_left,A_left[j,rn]*A_left[rn,rn]^-1,j,rn)
+      end
+   end
+   for j in dim(W)+1:dim(V)  H[j,j]=1  end
+   H = A_left*H*A_right
+   _gens = [V([H[i,j] for j in 1:dim(V)]) for i in dim(W)+1:dim(V) ]
+
+   return sub(V,_gens)
+end
+
+
+# if Symmetric, returns C,A,d where A*B*transpose(frobenius(A,e)) = C, C = block_matrix(2,2,[C,0,0,0]) and d = rank(C)
+# else returns C,A,d where B*A = C, C = [C 0] and d = rank(C)
+# Assumption: if Symmetric==true, then nr=nc always
+function find_radical(B::MatElem{T}, F::Field, nr::Int, nc::Int; e=0, Symmetric=false) where T <: FieldElem
+
+   V1 = VectorSpace(F,nc)
+   V2 = VectorSpace(F,nr)
+   K = Symmetric ? kernel(ModuleHomomorphism(V1,V2,B))[1] : kernel(ModuleHomomorphism(V1,V2,transpose(B)))[1]
+   U,emb = complement(V1,K)
    d = dim(U)
-   A = zero_matrix(F,m,m)
+   A = matrix(vcat(typeof(emb(gen(U,1)))[emb(v) for v in gens(U)], typeof(K.map(gen(K,1)))[K.map(v) for v in gens(K)] ))
+#=   A = zero_matrix(F,m,m)
    for i in 1:d
    for j in 1:m
       A[i,j] = emb(gen(U,i))[j]
@@ -78,6 +113,7 @@ function find_radical(B::MatElem{T}, F::Field, n::Int, m::Int; e=0, Symmetric=fa
       A[d+i,j] = K.map(gen(K,i))[j]
    end
    end
+=#
 
    if Symmetric
       return A*B*transpose(map(y -> frobenius(y,e),A)), A, d
@@ -92,14 +128,13 @@ end
 
 
 
-# returns D, A such that B*A*ConjugateTranspose(B) = D and 
+# returns D, A such that A*B*transpose(frobenius(A)) = D and 
 # D is diagonal matrix (or with blocks [0 1 s 0])
 # f = dimension of the zero block in B in the isotropic case
 function block_anisotropic_elim(B::MatElem{T}, _type; isotr=false, f=0)  where T <: FieldElem
 
    d = nrows(B)
    F = base_ring(B)
-
    if d in (0,1)
       return B, identity_matrix(F,d)
    end
@@ -194,3 +229,22 @@ end
 
 
 
+# assume B is nondegenerate
+function block_herm_elim(B::MatElem{T}, _type) where T <: FieldElem
+   d = nrows(B)
+   F = base_ring(B)
+
+   if d==1
+      return B, identity_matrix(F,1)
+   end
+
+   c = ceil(d/2)
+   B2 = submatrix(B,1,1,c,c)
+   if B2==0
+      D,A = block_anisotropic_elim(B,_type; isotr=true, f=c)
+   else
+      D,A = block_anisotropic_elim(B,_type)
+   end
+
+   return D,A
+end

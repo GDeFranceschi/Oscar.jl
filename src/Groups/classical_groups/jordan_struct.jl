@@ -1,7 +1,9 @@
+import AbstractAlgebra: FieldElem
 import Hecke: evaluate, multiplicative_jordan_decomposition, PolyElem, _rational_canonical_form_setup, refine_for_jordan
 
 export
     block_matrix,
+    conjugate_transpose,
     diagonal_join,
     generalized_jordan_form,
     insert_block,
@@ -145,4 +147,25 @@ function block_matrix(m::Int, n::Int, V::AbstractVector{T}) where T <: MatElem
       pos_i += nrows(V[n*(i-1)+1])
    end
    return B
+end
+
+"""
+    matrix(A::Array{AbstractAlgebra.Generic.FreeModuleElem{T},1})
+Return the matrix whose rows are the vectors in `A`. Of course, vectors in `A` must have the same length and the same base ring.
+"""
+function matrix(A::Array{AbstractAlgebra.Generic.FreeModuleElem{T},1}) where T <: FieldElem
+   c = length(A[1].v)
+   X = zero_matrix(base_ring(A[1]), length(A), c)
+   for i in 1:length(A)
+      @assert length(A[i].v)==c "Vectors must have the same length"
+      for j in 1:c X[i,j] = A[i][j] end
+   end
+
+   return X
+end
+
+function conjugate_transpose(x::MatElem{T}) where T <: FieldElem
+   iseven(degree(base_ring(x))) || throw(ArgumentError("The base ring must have even degree"))
+   e = div(degree(base_ring(x)),2)
+   return transpose(map(y -> frobenius(y,e),x))
 end
