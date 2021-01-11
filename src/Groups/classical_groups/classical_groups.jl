@@ -2,8 +2,7 @@ import Hecke: evaluate, multiplicative_jordan_decomposition, PolyElem, _rational
 
 include("stuff_field_gen.jl")
 include("stuff_isometries.jl")
-include("vector_spaces.jl")
-include("jordan_struct.jl")
+include("matrix_manipulation.jl")
 include("linear_conjugate.jl")
 include("linear_centralizer.jl")
 include("transform_form.jl")

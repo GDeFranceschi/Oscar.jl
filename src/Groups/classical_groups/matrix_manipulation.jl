@@ -3,48 +3,15 @@ import Hecke: evaluate, multiplicative_jordan_decomposition, PolyElem, _rational
 
 export
     block_matrix,
+    complement,
     conjugate_transpose,
     diagonal_join,
     generalized_jordan_form,
     insert_block,
     insert_block!,
     isconjugate_gl,
-    issemisimple,
-    isunipotent,
-    multiplicative_jordan_decomposition,
     pol_elementary_divisors,
     submatrix
-
-
-########################################################################
-#
-# Semisimple / Unipotent
-#
-########################################################################
-
-function multiplicative_jordan_decomposition(x::MatrixGroupElem)
-   a,b = multiplicative_jordan_decomposition(x.elm)
-   return MatrixGroupElem(x.parent,a), MatrixGroupElem(x.parent,b)
-end
-
-"""
-    issemisimple(x::MatrixGroupElem)
-
-Return whether `x` is semisimple, i.e. has order coprime with the characteristic of its base ring.
-"""
-issemisimple(x::MatrixGroupElem) = iscoprime(Int(order(x)), Int(characteristic(x.parent.ring)))
-
-"""
-    isunipotent(x::MatrixGroupElem)
-
-Return whether `x` is unipotent, i.e. its order is a power of the characteristic of its base ring.
-"""
-isunipotent(x::MatrixGroupElem) = isone(x) || ispower(Int(order(x)))[2]==Int(characteristic(x.parent.ring))
-
-
-
-
-
 
 
 
@@ -169,3 +136,68 @@ function conjugate_transpose(x::MatElem{T}) where T <: FieldElem
    e = div(degree(base_ring(x)),2)
    return transpose(map(y -> frobenius(y,e),x))
 end
+
+
+# computes a complement for W in V (i.e. a subspace U of V such that V is direct sum of U and W)
+"""
+    complement(V::AbstractAlgebra.Generic.FreeModule{T}, W::AbstractAlgebra.Generic.Submodule{T})
+Return a complement for `W` in `V`, i.e. a subspace `U` of `V` such that `V` is direct sum of `U` and `W`.
+"""
+function complement(V::AbstractAlgebra.Generic.FreeModule{T}, W::AbstractAlgebra.Generic.Submodule{T}) where T <: FieldElem
+   @assert issubmodule(V,W) "The second argument is not a subspace of the first one"
+   if dim(W)==0 return sub(V,basis(V)) end
+
+   e = W.map
+
+   H = matrix( vcat([e(g) for g in gens(W)], [zero(V) for i in 1:(dim(V)-dim(W)) ]) )
+   d = dim(W)
+   A_left = identity_matrix(base_ring(V), dim(V))
+   A_right = identity_matrix(base_ring(V), dim(V))
+   for rn in 1:dim(W)     # rn = row number
+      cn = rn    # column number
+      while H[rn,cn]==0 cn+=1 end   # bring on the left the first non-zero entry
+      swap_cols!(H,rn,cn)
+      swap_rows!(A_right,rn,cn)
+      for j in rn+1:dim(W)
+         add_row!(H,H[j,rn]*H[rn,rn]^-1,rn,j)
+         add_column!(A_left,A_left[j,rn]*A_left[rn,rn]^-1,j,rn)
+      end
+   end
+   for j in dim(W)+1:dim(V)  H[j,j]=1  end
+   H = A_left*H*A_right
+   _gens = [V([H[i,j] for j in 1:dim(V)]) for i in dim(W)+1:dim(V) ]
+
+   return sub(V,_gens)
+end
+
+
+########################################################################
+#
+# New operations
+#
+########################################################################
+
+Base.getindex(V::AbstractAlgebra.Generic.FreeModule, i::Int) = gen(V, i)
+
+# this just allows to write V([1,z,0]) instead of V([F(1),z,F(0)])
+function (V::AbstractAlgebra.Generic.FreeModule)(l::Array{T,1}) where T
+   if T<:typeof(base_ring(V)) return V(l)
+   else return V( [base_ring(V)(j) for j in l] )
+   end
+end
+
+# scalar product
+Base.:*(v::AbstractAlgebra.Generic.FreeModuleElem{T},u::AbstractAlgebra.Generic.FreeModuleElem{T}) where T <: FieldElem = (v.v*transpose(u.v))[1]
+
+Base.:*(v::AbstractAlgebra.Generic.FreeModuleElem{T},x::MatElem{T}) where T <: FieldElem = v.parent(v.v*x)
+Base.:*(x::MatElem{T},u::AbstractAlgebra.Generic.FreeModuleElem{T}) where T <: FieldElem = x*transpose(u.v)
+
+# evaluation of the form x into the vectors v and u
+Base.:*(v::AbstractAlgebra.Generic.FreeModuleElem{T},x::MatElem{T},u::AbstractAlgebra.Generic.FreeModuleElem{T}) where T <: FieldElem = (v.v*x*transpose(u.v))[1]
+
+
+Base.:*(v::AbstractAlgebra.Generic.FreeModuleElem{T},x::MatrixGroupElem{T}) where T <: FieldElem = v.parent(v.v*x.elm)
+Base.:*(x::MatrixGroupElem{T},u::AbstractAlgebra.Generic.FreeModuleElem{T}) where T <: FieldElem = x.elm*transpose(u.v)
+
+# evaluation of the form x into the vectors v and u
+Base.:*(v::AbstractAlgebra.Generic.FreeModuleElem{T},x::MatrixGroupElem{T},u::AbstractAlgebra.Generic.FreeModuleElem{T}) where T <: FieldElem = (v.v*x.elm*transpose(u.v))[1]

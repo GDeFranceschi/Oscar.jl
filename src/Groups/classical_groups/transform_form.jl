@@ -30,65 +30,23 @@ end
 
 ###############################################################################################################
 
-#=
-# computes a complement for W in V (i.e. a subspace U of V such that V is direct sum of U and W)
-function complement(V::AbstractAlgebra.Generic.FreeModule{T}, W::AbstractAlgebra.Generic.Submodule{T}) where T <: FieldElem
-   @assert issubmodule(V,W) "The second argument is not a subspace of the first one"
-
-   e = W.map
- 
-   H = zero_matrix(base_ring(V), dim(V), dim(V))
-   for i in 1:dim(W)
-      v = e(gen(W,i))
-      for j in 1:dim(V)  H[i,j] = v[j]   end
-   end
-   d = rank(H)
-   _gens = AbstractAlgebra.Generic.FreeModuleElem{T}[]
-   s = 0      # number of generators for U
-   track = 0
-   while s < dim(V)-d
-      track+=1
-      H[d+s+1,track]=1
-      while rank(H) < d+s+1
-         H[d+s+1,track],H[d+s+1,track+1] = 0,1
-         track+=1
-      end
-      push!(_gens, gen(V,track))
-      s +=1
-   end
-
-   return sub(V,_gens)
-end
-=#
-
-
-# computes a complement for W in V (i.e. a subspace U of V such that V is direct sum of U and W)
-function complement(V::AbstractAlgebra.Generic.FreeModule{T}, W::AbstractAlgebra.Generic.Submodule{T}) where T <: FieldElem
-   @assert issubmodule(V,W) "The second argument is not a subspace of the first one"
-   if dim(W)==0 return sub(V,basis(V)) end
-
-   e = W.map
-
-   H = matrix( vcat([e(g) for g in gens(W)], [zero(V) for i in 1:(dim(V)-dim(W)) ]) )
-   d = dim(W)
-   A_left = identity_matrix(base_ring(V), dim(V))
-   A_right = identity_matrix(base_ring(V), dim(V))
-   for rn in 1:dim(W)     # rn = row number
-      cn = rn    # column number
-      while H[rn,cn]==0 cn+=1 end   # bring on the left the first non-zero entry
-      swap_cols!(H,rn,cn)
-      swap_rows!(A_right,rn,cn)
-      for j in rn+1:dim(W)
-         add_row!(H,H[j,rn]*H[rn,rn]^-1,rn,j)
-         add_column!(A_left,A_left[j,rn]*A_left[rn,rn]^-1,j,rn)
+# returns x,y such that ax^2+by^2 = c
+function _solve_eqn(a::T, b::T, c::T) where T <: FieldElem
+   F = parent(a)
+   found = false
+   w = primitive_element(F)
+   x = one(F)
+   while found==false
+      x *= w
+      s = (c - a*x^2)*b^-1
+      vero, y = issquare(s)
+      if vero
+         found = true
+         return x,y
       end
    end
-   for j in dim(W)+1:dim(V)  H[j,j]=1  end
-   H = A_left*H*A_right
-   _gens = [V([H[i,j] for j in 1:dim(V)]) for i in dim(W)+1:dim(V) ]
-
-   return sub(V,_gens)
 end
+
 
 
 # if Symmetric, returns C,A,d where A*B*transpose(frobenius(A,e)) = C, C = block_matrix(2,2,[C,0,0,0]) and d = rank(C)
@@ -230,6 +188,11 @@ end
 
 
 # assume B is nondegenerate
+
+
+# returns D, A such that A*B*transpose(frobenius(A)) = D and 
+# D is diagonal matrix (or with blocks [0 1 s 0])
+# f = dimension of the zero block in B in the isotropic case
 function block_herm_elim(B::MatElem{T}, _type) where T <: FieldElem
    d = nrows(B)
    F = base_ring(B)
@@ -238,7 +201,7 @@ function block_herm_elim(B::MatElem{T}, _type) where T <: FieldElem
       return B, identity_matrix(F,1)
    end
 
-   c = ceil(d/2)
+   c = Int(ceil(d/2))
    B2 = submatrix(B,1,1,c,c)
    if B2==0
       D,A = block_anisotropic_elim(B,_type; isotr=true, f=c)

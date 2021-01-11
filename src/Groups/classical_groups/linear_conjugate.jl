@@ -1,3 +1,39 @@
+export
+    issemisimple,
+    isunipotent,
+    multiplicative_jordan_decomposition
+
+
+
+
+########################################################################
+#
+# Semisimple / Unipotent
+#
+########################################################################
+
+function multiplicative_jordan_decomposition(x::MatrixGroupElem)
+   a,b = multiplicative_jordan_decomposition(x.elm)
+   return MatrixGroupElem(x.parent,a), MatrixGroupElem(x.parent,b)
+end
+
+"""
+    issemisimple(x::MatrixGroupElem)
+
+Return whether `x` is semisimple, i.e. has order coprime with the characteristic of its base ring.
+"""
+issemisimple(x::MatrixGroupElem) = iscoprime(Int(order(x)), Int(characteristic(x.parent.ring)))
+
+"""
+    isunipotent(x::MatrixGroupElem)
+
+Return whether `x` is unipotent, i.e. its order is a power of the characteristic of its base ring.
+"""
+isunipotent(x::MatrixGroupElem) = isone(x) || ispower(Int(order(x)))[2]==Int(characteristic(x.parent.ring))
+
+
+
+
 
 
 ########################################################################
