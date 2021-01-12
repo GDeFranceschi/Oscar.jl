@@ -26,24 +26,23 @@ end
 ###############################################################################################################
 
 # Algorithm
-# based on paper of James Wilson, Optimal algorithms of Gram-Schmidt type
 
 ###############################################################################################################
 
 # returns x,y such that ax^2+by^2 = c
+# at the moment, it simply search for x such that (c-ax^2)/b is a square
+# TODO: is there a faster way to find x and y?
+# TODO: it would be better if this is deterministic. This depends on gen(F) and issquare(F).
 function _solve_eqn(a::T, b::T, c::T) where T <: FieldElem
-   F = parent(a)
-   found = false
-   w = primitive_element(F)
-   x = one(F)
-   while found==false
-      x *= w
+   F = parent(a)  
+   ch = Int(characteristic(F))
+   dg = degree(F)
+   w = gen(F)
+   for i in collect(Iterators.product([0:ch-1 for j in 1:dg]...))
+      x = sum([w^(j-1)*i[j] for j in 1:dg])
       s = (c - a*x^2)*b^-1
       vero, y = issquare(s)
-      if vero
-         found = true
-         return x,y
-      end
+      if vero return x,y end
    end
 end
 
@@ -89,6 +88,8 @@ end
 # returns D, A such that A*B*transpose(frobenius(A)) = D and 
 # D is diagonal matrix (or with blocks [0 1 s 0])
 # f = dimension of the zero block in B in the isotropic case
+
+# based on paper of James Wilson, Optimal algorithms of Gram-Schmidt type
 function block_anisotropic_elim(B::MatElem{T}, _type; isotr=false, f=0)  where T <: FieldElem
 
    d = nrows(B)
