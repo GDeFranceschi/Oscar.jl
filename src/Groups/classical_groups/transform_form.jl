@@ -212,3 +212,149 @@ function block_herm_elim(B::MatElem{T}, _type) where T <: FieldElem
 
    return D,A
 end
+
+
+
+# returns D such that D*B*conjugatetranspose(D) is the standard basis
+# it modifies the basis_change_matrix of the function block_herm_elim
+# TODO: not done for orthogonal
+
+function _to_standard_form(B::MatElem{T}, _type)  where T <: FieldElem
+   F = base_ring(B)
+   n = nrows(B)
+   A,D = block_herm_elim(B, _type)
+
+   if _type=="symplectic"
+      our_perm = vcat(1:2:n, reverse(2:2:n))
+      D = permutation_matrix(F,our_perm)*D
+   elseif _type=="unitary"
+      w = primitive_element(F)
+      q = sqrt(order(F))
+      Z = identity_matrix(F,n)
+      # turn the elements on the main diagonal into 1
+      for i in 1:n
+         if A[i,i]!=0
+            lambda = _disc_log(w^(q+1),A[i,i])
+            Z[i,i] = w^-lambda
+            A[i,i] = 1
+         end
+      end
+      D = Z*D
+      # moving all hyperbolic lines at the end
+      Z = identity_matrix(F,n)
+      our_permut = Array(1:n)
+      NOZ = 0      # Number Of Zeros on the diagonal before A[i,i]
+      for i in 1:n
+         if A[i,i]==0
+            NOZ += 1
+         else
+            j = i
+            while j>i-NOZ
+               swap_cols!(A,j,j-1)
+               j -= 1
+            end
+            j = i
+            while j > i-NOZ
+               swap_rows!(A,j,j-1)
+               j -= 1
+            end
+            for j in 1:NOZ
+               our_permut[i+1-j] = our_permut[i-j]
+            end
+            our_permut[i-NOZ] = i
+         end
+      end
+      Z = permutation_matrix(F, our_permut)
+      D = Z*D
+      # turn 2x2 identities into 2x2 anti-diagonal blocks
+      Z = identity_matrix(F,n)
+      if isodd(q)
+         b = (1+w^(div((q-1)^2,2)))^-1
+         a = b*w^(div((1-q),2))
+         d = 1
+         c = w^(div((q-1),2))
+      else
+         b = (1+w^(q-1))^-1
+         a = b*w^(q-1)
+         d = 1
+         c = 1
+      end
+      S = matrix(F,2,2,[a,b,c,d])
+      if div(n-NOZ,2)==0
+         S = zero_matrix(F,0,0)
+      else
+         S = diagonal_join([S for i in 1:div(n-NOZ,2)])
+      end
+      # turn into standard GAP form
+      sec_perm = Int[]
+      for i in 1:div(n,2)
+         sec_perm = vcat([i,n+1-i],sec_perm)
+      end
+      if isodd(n)
+         insert_block!(Z,S,2,2)
+         sec_perm = vcat([div(n+1,2)],sec_perm)
+      else
+         insert_block!(Z,S,1,1)
+      end
+      D = transpose(permutation_matrix(F,sec_perm))*Z*D
+   end
+
+   return D
+end
+
+
+
+###############################################################################################################
+
+# Change of basis between two matrices
+
+###############################################################################################################
+
+# modifies A by eliminating all hyperbolic lines and turning A into a diagonal matrix
+# return the matrix Z such that Z*A*transpose(Z) is diagonal
+function _elim_hyp_lines(A::MatElem{T}) where T <: FieldElem
+   F = base_ring(A)
+   n = nrows(A)
+   b = matrix(F,2,2,[1,1,1,-1])  # change of basis from matrix([0,1,1,0]) to matrix([2,0,0,-2])
+   Z = identity_matrix(F,n)
+
+   i = 1
+   while i <= n
+      if A[i,i]==0
+         A[i,i]=2
+         A[i,i+1]=0
+         A[i+1,i]=0
+         A[i+1,i+1]=-2
+         insert_block!(Z,b,i,i)
+         i+=2
+      else
+         i+=1
+      end
+   end
+
+   return Z
+end
+
+
+# return D such that D*B1*conjugatetranspose(D)=B2
+# TODO: orthogonal only in odd char, at the moment
+function _change_basis(B1::MatElem{T}, B2::MatElem{T}, _type)  where T <: FieldElem
+
+   if _type=="symplectic" || _type=="unitary"
+      D1 = _to_standard_form(B1,_type)
+      D2 = _to_standard_form(B2,_type)
+      return D2^-1*D1
+   elseif _type=="orthogonal"
+      F = base_ring(B1)
+      n = nrows(B1)
+      A1,D1 = block_herm_elim(B1, _type)
+      A2,D2 = block_herm_elim(B2, _type)
+      q = order(F)
+      # eliminate all hyperbolic lines and turn A1,A2 into diagonal matrices
+      # FIXME: assure that the function _elim_hyp_lines actually modifies A1 and A2
+      D1 = _elim_hyp_lines(A1)*D1
+      D2 = _elim_hyp_lines(A2)*D2
+
+   end
+
+end

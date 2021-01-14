@@ -1,4 +1,4 @@
-import AbstractAlgebra: FieldElem
+import AbstractAlgebra: FieldElem, Ring
 import Hecke: evaluate, multiplicative_jordan_decomposition, PolyElem, _rational_canonical_form_setup, refine_for_jordan
 
 export
@@ -10,6 +10,7 @@ export
     insert_block,
     insert_block!,
     isconjugate_gl,
+    permutation_matrix,
     pol_elementary_divisors,
     submatrix
 
@@ -168,6 +169,18 @@ function complement(V::AbstractAlgebra.Generic.FreeModule{T}, W::AbstractAlgebra
    _gens = [V([H[i,j] for j in 1:dim(V)]) for i in dim(W)+1:dim(V) ]
 
    return sub(V,_gens)
+end
+
+#TODO check if this is correct
+"""
+    permutation_matrix(F::Ring, Q::AbstractVector{T}) where T <: Int
+Return the permutation matrix over the ring `R` corresponding to `Q`. Here, `Q` must contain exactly once every integer from 1 to some `n`.
+"""
+function permutation_matrix(F::Ring, Q::AbstractVector{T}) where T <: Int
+   @assert Set(Q)==Set(1:length(Q)) "Invalid input"
+   Z = zero_matrix(F,length(Q),length(Q))
+   for i in 1:length(Q) Z[i,Q[i]] = 1 end
+   return Z
 end
 
 
