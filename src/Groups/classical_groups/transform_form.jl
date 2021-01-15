@@ -229,7 +229,7 @@ function _to_standard_form(B::MatElem{T}, _type)  where T <: FieldElem
       D = permutation_matrix(F,our_perm)*D
    elseif _type=="unitary"
       w = primitive_element(F)
-      q = sqrt(order(F))
+      q = Int(sqrt(order(F)))
       Z = identity_matrix(F,n)
       # turn the elements on the main diagonal into 1
       for i in 1:n
@@ -351,10 +351,41 @@ function _change_basis(B1::MatElem{T}, B2::MatElem{T}, _type)  where T <: FieldE
       A2,D2 = block_herm_elim(B2, _type)
       q = order(F)
       # eliminate all hyperbolic lines and turn A1,A2 into diagonal matrices
-      # FIXME: assure that the function _elim_hyp_lines actually modifies A1 and A2
+      # TODO: assure that the function _elim_hyp_lines actually modifies A1 and A2
       D1 = _elim_hyp_lines(A1)*D1
       D2 = _elim_hyp_lines(A2)*D2
-
+      @assert issquare( prod(diagonal(A1))*prod(diagonal(A2)) )[1] "The matrices are not congruent"
+      # move all the squares on the diagonal at the begin
+      _squares = [i for i in 1:n if issquare(A1[i,i])[1]]
+      our_perm = vcat(_squares, [i for i in 1:n if !(i in _squares)])      # TODO is there a more elengant way?
+      P = permutation_matrix(F,our_perm)
+      s1 = length(_squares)
+      D1 = P*D1
+      A1 = P*A1*transpose(P)
+      _squares = [i for i in 1:n if issquare(A2[i,i])[1]]
+      our_perm = vcat(_squares, [i for i in 1:n if !(i in _squares)])      # TODO is there a more elengant way?
+      P = permutation_matrix(F,our_perm)
+      s2 = length(_squares)
+      D2 = P*D2
+      A2 = P*A2*transpose(P)
+      # get same number of squares on the two diagonals of A1 and A2 by modifying A1
+      if s1!=s2
+         s = min(s1,s2)+1
+         w = A1[s,s]*A2[s,s]     # I'm sure this is not a square
+         a,b = _solve_eqn(F(1),F(1),w)
+         L = identity_matrix(F,n)
+         for i in 0:div(abs(s1-s2),2)-1
+            L[s+2*i,s+2*i] = a
+            L[s+2*i,s+2*i+1] = b*issquare(A1[s+2*i,s+2*i]*A1[s+2*i+1,s+2*i+1]^-1)[2]
+            L[s+2*i+1,s+2*i] = b
+            L[s+2*i+1,s+2*i+1] = -a*issquare(A1[s+2*i,s+2*i]*A1[s+2*i+1,s+2*i+1]^-1)[2]
+         end
+         D1 = L*D1
+         A1 = L*A1*transpose(L)
+      end
+      # change matrix from A1 to A2
+      S = diagonal_matrix([issquare(A2[i,i]*A1[i,i]^-1)[2] for i in 1:n])
+      return D2^-1*S*D1
    end
 
 end
