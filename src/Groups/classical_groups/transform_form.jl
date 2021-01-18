@@ -1,5 +1,8 @@
 import AbstractAlgebra: Field
 
+export
+    iscongruent
+
 #return true, m if f and g are congruent, and m is such that g = mfm*
 function iscongruent(f::SesquilinearForm, g::SesquilinearForm)
    base_ring(f)==base_ring(g) || return false, Nothing      # TODO: do we want to return an ERROR in these cases?
@@ -73,7 +76,7 @@ function find_radical(B::MatElem{T}, F::Field, nr::Int, nc::Int; e=0, Symmetric=
 =#
 
    if Symmetric
-      return A*B*transpose(map(y -> frobenius(y,e),A)), A, d
+      return A*B*conjugate_transpose(A), A, d
    else
       A = transpose(A)
       return B*A, A, d
@@ -90,7 +93,7 @@ end
 # f = dimension of the zero block in B in the isotropic case
 
 # based on paper of James Wilson, Optimal algorithms of Gram-Schmidt type
-function block_anisotropic_elim(B::MatElem{T}, _type; isotr=false, f=0)  where T <: FieldElem
+function block_anisotropic_elim(B::MatElem{T}, _type::Symbol; isotr=false, f=0)  where T <: FieldElem
 
    d = nrows(B)
    F = base_ring(B)
@@ -98,13 +101,13 @@ function block_anisotropic_elim(B::MatElem{T}, _type; isotr=false, f=0)  where T
       return B, identity_matrix(F,d)
    end
 
-   if _type=="orthogonal"
+   if _type==:symmetric
       degF=0
       s=1
-   elseif _type=="symplectic"
+   elseif _type==:alternating
       degF=0
       s=-1
-   elseif _type=="unitary"
+   elseif _type==:hermitian
       degF=div(degree(F),2)
       s=1
    end
@@ -219,15 +222,15 @@ end
 # it modifies the basis_change_matrix of the function block_herm_elim
 # TODO: not done for orthogonal
 
-function _to_standard_form(B::MatElem{T}, _type)  where T <: FieldElem
+function _to_standard_form(B::MatElem{T}, _type::Symbol)  where T <: FieldElem
    F = base_ring(B)
    n = nrows(B)
    A,D = block_herm_elim(B, _type)
 
-   if _type=="symplectic"
+   if _type==:alternating
       our_perm = vcat(1:2:n, reverse(2:2:n))
       D = permutation_matrix(F,our_perm)*D
-   elseif _type=="unitary"
+   elseif _type==:hermitian
       w = primitive_element(F)
       q = Int(sqrt(order(F)))
       Z = identity_matrix(F,n)
@@ -336,15 +339,16 @@ function _elim_hyp_lines(A::MatElem{T}) where T <: FieldElem
 end
 
 
-# return D such that D*B1*conjugatetranspose(D)=B2
+# return true, D such that D*B1*conjugatetranspose(D)=B2
+# return false, Nothing if D does not exist
 # TODO: orthogonal only in odd char, at the moment
-function _change_basis(B1::MatElem{T}, B2::MatElem{T}, _type)  where T <: FieldElem
+function _change_basis(B1::MatElem{T}, B2::MatElem{T}, _type::Symbol)  where T <: FieldElem
 
-   if _type=="symplectic" || _type=="unitary"
+   if _type==:alternating || _type==:hermitian
       D1 = _to_standard_form(B1,_type)
       D2 = _to_standard_form(B2,_type)
-      return D2^-1*D1
-   elseif _type=="orthogonal"
+      return true, D2^-1*D1
+   elseif _type==:symmetric
       F = base_ring(B1)
       n = nrows(B1)
       A1,D1 = block_herm_elim(B1, _type)
@@ -354,7 +358,7 @@ function _change_basis(B1::MatElem{T}, B2::MatElem{T}, _type)  where T <: FieldE
       # TODO: assure that the function _elim_hyp_lines actually modifies A1 and A2
       D1 = _elim_hyp_lines(A1)*D1
       D2 = _elim_hyp_lines(A2)*D2
-      @assert issquare( prod(diagonal(A1))*prod(diagonal(A2)) )[1] "The matrices are not congruent"
+      issquare( prod(diagonal(A1))*prod(diagonal(A2)) )[1] || return false, Nothing
       # move all the squares on the diagonal at the begin
       _squares = [i for i in 1:n if issquare(A1[i,i])[1]]
       our_perm = vcat(_squares, [i for i in 1:n if !(i in _squares)])      # TODO is there a more elengant way?
@@ -385,7 +389,31 @@ function _change_basis(B1::MatElem{T}, B2::MatElem{T}, _type)  where T <: FieldE
       end
       # change matrix from A1 to A2
       S = diagonal_matrix([issquare(A2[i,i]*A1[i,i]^-1)[2] for i in 1:n])
-      return D2^-1*S*D1
+      return true, D2^-1*S*D1
    end
 
+end
+
+"""
+    iscongruent(f::SesquilinearForm{T}, g::SesquilinearForm{T}) where T <: RingElem
+Return (`true`, `C`) if there exists a matrix `C` such that `CAC* = B`, or `CAC*-B` is skew-symmetric (for quadratic forms), where `A` and `B` are the Gram matrices of `f` and `g` respectively, and `C*` is the transpose-conjugate matrix of `C`. If such `C` does not exist, then return (`false`, `Nothing`).
+"""
+function iscongruent(f::SesquilinearForm{T}, g::SesquilinearForm{T}) where T <: RingElem
+
+   @assert base_ring(f)==base_ring(g) "The forms have not the same base ring"
+   @assert nrows(f.matrix)==nrows(g.matrix) "The forms act on vector spaces of different dimensions"
+   f.descr==g.descr || return false, Nothing
+   
+   if f.descr==:quadratic
+      if iseven(characteristic(base_ring(f)))            # in this case we use the GAP algorithms
+         GAP.Globals.IsometricCanonicalForm(f.X)==GAP.Globals.IsometricCanonicalForm(g.X) || return false, Nothing
+         B1 = GAP.Globals.BaseChangeToCanonical(f.X)
+         B2 = GAP.Globals.BaseChangeToCanonical(g.X)
+         return true, f.mat_iso(B2)^-1*f.mat_iso(B1)
+      else
+         return _change_basis(f.matrix+transpose(f.matrix), g.matrix+transpose(g.matrix), :symmetric)
+      end
+   else
+      return _change_basis(f.matrix, g.matrix, f.descr)
+   end
 end

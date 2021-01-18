@@ -132,6 +132,10 @@ function matrix(A::Array{AbstractAlgebra.Generic.FreeModuleElem{T},1}) where T <
    return X
 end
 
+"""
+    conjugate_transpose(x::MatElem{T}) where T <: FieldElem
+If the base ring of `x` is `GF(q^2)`, return the matrix `transpose( map ( y -> y^q, x) )`. An error is returned if the base ring has no even degree.
+"""
 function conjugate_transpose(x::MatElem{T}) where T <: FieldElem
    iseven(degree(base_ring(x))) || throw(ArgumentError("The base ring must have even degree"))
    e = div(degree(base_ring(x)),2)

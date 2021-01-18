@@ -71,3 +71,85 @@
 
 
 end
+
+@testset "Transform form" begin
+   @testset "Unitary case" begin
+      for q in [2,3]
+      for n in [5,6]
+         G = GL(n,q^2)
+         for i in 1:5
+            x = rand(G).elm
+            x = x+conjugate_transpose(x)
+            while rank(x) != n
+               x = rand(G).elm
+               x = x+conjugate_transpose(x)
+            end
+            y = rand(G).elm
+            y = y+conjugate_transpose(y)
+            while rank(y) != n
+               y = rand(G).elm
+               y = y+conjugate_transpose(y)
+            end
+            x = hermitian_form(x)
+            y = hermitian_form(y)
+            vero,C = iscongruent(x,y)
+            @test vero
+            @test C*x.matrix*conjugate_transpose(C)==y.matrix
+         end
+      end
+      end
+   end
+
+   @testset "Symmetric case" begin
+      for q in [3,9]
+      for n in [5,6,8]
+         G = GL(n,q^2)
+         for i in 1:5
+            x = rand(G).elm
+            x = x+transpose(x)
+            while rank(x) != n
+               x = rand(G).elm
+               x = x+transpose(x)
+            end
+            y = rand(G).elm
+            y = y+transpose(y)
+            while rank(y) != n
+               y = rand(G).elm
+               y = y+transpose(y)
+            end
+            x = symmetric_form(x)
+            y = symmetric_form(y)
+            vero,C = iscongruent(x,y)
+            if vero @test C*x.matrix*transpose(C)==y.matrix end
+         end
+      end
+      end
+   end
+
+   @testset "Alternating case" begin
+      for q in [2,3,4,9]
+      for n in [6,8]
+         G = GL(n,q^2)
+         for i in 1:5
+            x = rand(G).elm
+            x = x-transpose(x)
+            while rank(x) != n
+               x = rand(G).elm
+               x = x-transpose(x)
+            end
+            y = rand(G).elm
+            y = y-transpose(y)
+            while rank(y) != n
+               y = rand(G).elm
+               y = y-transpose(y)
+            end
+            x = alternating_form(x)
+            y = alternating_form(y)
+            vero,C = iscongruent(x,y)
+            @test vero
+            @test C*x.matrix*transpose(C)==y.matrix
+         end
+      end
+      end
+   end
+end
