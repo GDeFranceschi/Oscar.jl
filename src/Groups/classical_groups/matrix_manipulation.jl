@@ -10,6 +10,8 @@ export
     insert_block,
     insert_block!,
     isconjugate_gl,
+    ishermitian_matrix,
+    isskewsymmetric_matrix,
     permutation_matrix,
     pol_elementary_divisors,
     submatrix
@@ -175,7 +177,6 @@ function complement(V::AbstractAlgebra.Generic.FreeModule{T}, W::AbstractAlgebra
    return sub(V,_gens)
 end
 
-#TODO check if this is correct
 """
     permutation_matrix(F::Ring, Q::AbstractVector{T}) where T <: Int
 Return the permutation matrix over the ring `R` corresponding to `Q`. Here, `Q` must contain exactly once every integer from 1 to some `n`.
@@ -187,6 +188,50 @@ function permutation_matrix(F::Ring, Q::AbstractVector{T}) where T <: Int
    return Z
 end
 
+
+########################################################################
+#
+# New operations
+#
+########################################################################
+
+# TODO: not sure whether this definition of skew-symmetric is standard (for fields of characteristic 2)
+"""
+    isskewsymmetric_matrix(B::MatElem{T}) where T <: Ring
+Return whether the matrix `B` is skew-symmetric, i.e. `B = -transpose(B)` and `B` has zeros on the diagonal. Returns `false` if `B` is not a square matrix.
+"""
+function isskewsymmetric_matrix(B::MatElem{T}) where T <: RingElem
+   n = nrows(B)
+   n==ncols(B) || return false
+
+   for i in 1:n
+      B[i,i]==0 || return false
+      for j in i+1:n
+         B[i,j]==-B[j,i] || return false
+      end
+   end
+
+   return true
+end
+
+"""
+    ishermitian_matrix(B::MatElem{T}) where T <: Ring
+Return whether the matrix `B` is hermitian, i.e. `B = conjugate_transpose(B)`. Returns `false` if `B` is not a square matrix, or the field has not even degree.
+"""
+function ishermitian_matrix(B::MatElem{T}) where T <: RingElem
+   n = nrows(B)
+   n==ncols(B) || return false
+   e = degree(base_ring(B))
+   iseven(e) ? e = div(e,2) : return false
+
+   for i in 1:n
+      for j in i:n
+         B[i,j]==frobenius(B[j,i],e) || return false
+      end
+   end
+
+   return true
+end
 
 ########################################################################
 #

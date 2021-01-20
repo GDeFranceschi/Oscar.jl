@@ -76,7 +76,7 @@ function find_radical(B::MatElem{T}, F::Field, nr::Int, nc::Int; e=0, Symmetric=
 =#
 
    if Symmetric
-      return A*B*conjugate_transpose(A), A, d
+      return A*B*transpose(A), A, d
    else
       A = transpose(A)
       return B*A, A, d
