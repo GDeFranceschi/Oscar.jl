@@ -125,3 +125,48 @@ end
    x = G[1]
    TestConjCentr(G,x)
 end
+
+@testset "Conjugation and centralizers for GL and SL" begin
+   G = GL(8,25)
+   S = SL(8,25)
+   R,t = PolynomialRing(base_ring(G),"t")
+
+   x = generalized_jordan_block(t-1,8)
+   y = generalized_jordan_block(t-1,8)
+   x[7,8]=gen(F)
+   x=S(x); y=S(y);
+   vero, z = isconjugate(G,x,y)
+   @test vero
+   @test z in G
+   @test x^z==y
+   vero, z = isconjugate(S,x,y)
+   @test !vero
+   x.elm[7,8]=gen(F)^8
+   vero, z = isconjugate(S,x,y)
+   @test z in S
+   @test x^z==y
+
+   G = GL(8,5)
+   S = SL(8,5)
+   R,t = PolynomialRing(base_ring(G),"t")
+   x = diagonal_join(generalized_jordan_block(t-1,4), generalized_jordan_block(t-1,2), identity_matrix(base_ring(G),2))
+   C = centralizer(G,G(x))[1]
+   @test order(C) == order(GL(2,5))*4^2*5^16
+   Cs = centralizer(S,S(x))[1]
+   @test order(Cs) == div(order(GL(2,5))*4^2*5^16,4)
+   x = diagonal_join( [generalized_jordan_block(t-1,2) for i in 1:4] )
+   C = centralizer(G,G(x))[1]
+   @test order(C) == order(GL(4,5))*5^16
+   Cs = centralizer(S,S(x))[1]
+   @test order(Cs) == div(order(GL(4,5))*5^16,2)
+   x = diagonal_join( [generalized_jordan_block(t-1,4) for i in 1:2] )
+   C = centralizer(G,G(x))[1]
+   @test order(C) == order(GL(2,5))*5^12
+   Cs = centralizer(S,S(x))[1]
+   @test order(Cs) == order(GL(2,5))*5^12
+   
+
+   x = companion_matrix(t^8+t^3+t^2+t+2)
+   C = centralizer(G,G(x))[1]
+   @test order(C)==5^8-1
+end

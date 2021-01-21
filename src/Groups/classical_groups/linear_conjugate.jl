@@ -1,4 +1,7 @@
 export
+    generalized_jordan_block,
+    generalized_jordan_form,
+    isconjugate,
     issemisimple,
     isunipotent,
     multiplicative_jordan_decomposition
@@ -64,6 +67,10 @@ function pol_elementary_divisors(A::MatElem{T}) where T
    return V
 end
 
+"""
+    generalized_jordan_block(f::T, n::Int) where T<:PolyElem
+Return the Jordan block of dimension `n` relative to the elementary divisor `f`.
+"""
 function generalized_jordan_block(f::T, n::Int) where T<:PolyElem
    d = degree(f)
    JB = diagonal_join([companion_matrix(f) for i in 1:n])
@@ -76,6 +83,10 @@ function generalized_jordan_block(f::T, n::Int) where T<:PolyElem
 end
 
 # TODO is there a way to accelerate the process? pol_elementary_divisors and generalized_jordan_block repeat parts of the same code.
+"""
+    generalized_jordan_form(A::MatElem{T}; with_pol=false) where T
+Return (`J`,`Z`), where `J` is a diagonal join of Jordan blocks and `Z^-1*J*Z = A`.
+"""
 function generalized_jordan_form(A::MatElem{T}; with_pol=false) where T
    V = pol_elementary_divisors(A)
    GJ = diagonal_join([generalized_jordan_block(v[1],v[2]) for v in V])
@@ -87,7 +98,7 @@ function generalized_jordan_form(A::MatElem{T}; with_pol=false) where T
 end
 
 
-function isconjugate_gl(G::MatrixGroup, x::MatrixGroupElem, y::MatrixGroupElem)
+function isconjugate(G::MatrixGroup, x::MatrixGroupElem, y::MatrixGroupElem)
    isdefined(G,:descr) || throw(ArgumentError("Group must be general or special linear group"))
    if G.descr==:GL || G.descr==:SL
       Jx,ax = jordan_normal_form(x.elm)

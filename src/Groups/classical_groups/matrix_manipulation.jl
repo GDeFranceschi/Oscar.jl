@@ -6,7 +6,6 @@ export
     complement,
     conjugate_transpose,
     diagonal_join,
-    generalized_jordan_form,
     insert_block,
     insert_block!,
     isconjugate_gl,

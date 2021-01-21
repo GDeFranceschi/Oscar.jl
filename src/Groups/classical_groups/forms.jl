@@ -403,3 +403,26 @@ function Base.:*(f::SesquilinearForm, l::FieldElem)
 end
 
 Base.:*(l::FieldElem, f::SesquilinearForm) = f*l
+
+function Base.:^(f::SesquilinearForm{T}, x::MatElem{T}; check=false) where T <: RingElem
+   @assert base_ring(f)==base_ring(x) "Incompatible base rings"
+   @assert nrows(f.matrix)==nrows(x) "Incompatible dimensions"
+
+   if check @assert rank(x)==nrows(x) "Matrix not invertible" end
+   if f.descr==:hermitian
+      m = x^-1*f.matrix*conjugate_transpose(x^-1)
+   else
+      m = x^-1*f.matrix*transpose(x^-1)
+   end
+   return SesquilinearForm(m, f.descr)
+end
+
+function (f::SesquilinearForm{T})(v::AbstractAlgebra.Generic.FreeModuleElem{T},w::AbstractAlgebra.Generic.FreeModuleElem{T}) where T <: RingElem
+   @assert f.descr!=:quadratic "Quadratic forms requires only one argument"
+   return v*f.matrix*w
+end
+
+function (f::SesquilinearForm{T})(v::AbstractAlgebra.Generic.FreeModuleElem{T}) where T <: RingElem
+   @assert f.descr==:quadratic "Sesquilinear forms requires two arguments"
+   return v*f.matrix*v
+end
