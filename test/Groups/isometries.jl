@@ -153,3 +153,41 @@ end
       end
    end
 end
+
+@testset "Evaluating forms" begin
+   F,z=GF(3,2,"z")
+   V=VectorSpace(F,6)
+
+   x = matrix(F,6,6,[1,0,0,0,z+1,0,0,0,0,2,1+2*z,1,0,0,1,0,0,z,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,1])
+   f = alternating_form(x-transpose(x))
+   for i in 1:6
+   for j in i:6
+      @test f(V[i],V[j])==f.matrix[i,j]
+   end
+   end
+
+   f = hermitian_form(x+conjugate_transpose(x))
+   for i in 1:6
+   for j in i:6
+      @test f(V[i],V[j])==f(V[j],V[i])^3
+   end
+   end
+
+   Q = quadratic_form(x)
+   f = corresponding_bilinear_form(Q)
+   @test f.matrix==x+transpose(x)
+   for i in 1:6
+   for j in i:6
+      @test f(V[i],V[j])==Q(V[i]+V[j])-Q(V[i])-Q(V[j])
+   end
+   end
+
+   @test_throws AssertionError Q(V[1],V[5])
+   @test_throws AssertionError f(V[2])
+
+   g = rand(GL(6,F))
+   v = rand(V)
+   w = rand(V)
+   @test (f^g)(v,w)==f(v*g^-1,w*g^-1)
+   @test (Q^g)(v)==Q(v*g^-1)
+end

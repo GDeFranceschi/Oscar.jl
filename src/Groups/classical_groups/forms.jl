@@ -417,9 +417,16 @@ function Base.:^(f::SesquilinearForm{T}, x::MatElem{T}; check=false) where T <: 
    return SesquilinearForm(m, f.descr)
 end
 
+Base.:^(f::SesquilinearForm{T}, x::MatrixGroupElem{T}; check=false) where T <: RingElem = f^x.elm
+
 function (f::SesquilinearForm{T})(v::AbstractAlgebra.Generic.FreeModuleElem{T},w::AbstractAlgebra.Generic.FreeModuleElem{T}) where T <: RingElem
    @assert f.descr!=:quadratic "Quadratic forms requires only one argument"
-   return v*f.matrix*w
+
+   if f.descr==:hermitian
+      return v*f.matrix*map( y->frobenius(y,div(degree(base_ring(w)),2)),w)
+   else
+      return v*f.matrix*w
+   end
 end
 
 function (f::SesquilinearForm{T})(v::AbstractAlgebra.Generic.FreeModuleElem{T}) where T <: RingElem
