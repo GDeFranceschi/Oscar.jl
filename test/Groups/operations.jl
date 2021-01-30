@@ -51,3 +51,45 @@
       end
    end
 end
+
+@testset "Matrix manipulation" begin
+   F = GF(5,1)[1]
+   
+   I = identity_matrix(F,6)
+   x = matrix(F,2,2,[2,3,4,0])
+   I1 = insert_block(I,x,3,3)
+   @test I==identity_matrix(F,6)
+   insert_block!(I,x,3,3)
+   @test I==I1
+   @test submatrix(I,3,3,2,2)==x
+   Y = block_matrix(2,1,[block_matrix(1,2,[x,x^2]), block_matrix(1,2,[-x,x])])
+   @test Y==block_matrix(2,2,[x,x^2,-x,x])
+   z = zero_matrix(F,2,2)
+   @test diagonal_join([x,x,x])==block_matrix(3,3,[x,z,z,z,x,z,z,z,x])
+   @test diagonal_join(x,x,zero_matrix(F,4,4))==diagonal_join([x,x,zero_matrix(F,4,4)])
+   V = VectorSpace(F,6)
+   @test matrix([V[i] for i in 1:6])==identity_matrix(F,6)
+   L = [1,4,6,2,3,5]
+   P = permutation_matrix(F,L)
+   @testset for i in 1:6
+      @test V[i]*P == V[L[i]]
+   end
+   
+   R,t=PolynomialRing(F,"t")
+   f = t^4+2*t^3+4*t+1
+   @test evaluate(f,identity_matrix(F,6))==f(1)*identity_matrix(F,6)
+   @test_throws ArgumentError conjugate_transpose(x)
+   @test issymmetric(P+transpose(P))
+   @test isskewsymmetric_matrix(P-transpose(P))
+
+   F,z=GF(2,2)
+   x=matrix(F,4,4,[1,z,0,0,0,1,z^2,z,z,0,0,1,0,0,z+1,0])
+   y=x+transpose(x)
+   @test issymmetric(y)
+   @test ishermitian_matrix(x+conjugate_transpose(x))
+   @test isskewsymmetric_matrix(y)
+   y[1,1]=1
+   @test !isskewsymmetric_matrix(y)
+   @test conjugate_transpose(x)==transpose(matrix(F,4,4,[1,z+1,0,0,0,1,z,z+1,z+1,0,0,1,0,0,z,0]))
+
+end
