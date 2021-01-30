@@ -41,7 +41,7 @@ partitions(n::Int) = partitions(n,n)
 ########################################################################
 
 """
-    submatrix(A::MatElem{T}, m::Int, n::Int, i::Int, j::Int)
+    submatrix(A::MatElem{T}, i::Int, j::Int, m::Int, n::Int)
 Return the `m x n` submatrix of `A` rooted at `(i,j)`
 """
 function submatrix(A::MatElem, i::Int, j::Int, nr::Int, nc::Int)
