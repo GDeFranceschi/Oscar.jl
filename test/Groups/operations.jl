@@ -93,3 +93,26 @@ end
    @test conjugate_transpose(x)==transpose(matrix(F,4,4,[1,z+1,0,0,0,1,z,z+1,z+1,0,0,1,0,0,z,0]))
 
 end
+
+@testset "Operations with vector spaces" begin
+   F=GF(7,1)[1]
+   V=VectorSpace(F,5)
+
+   @test V([1,0,2,0,6])==V[1]+2*V[3]-V[5]
+   U = sub(V,[V[1],V[3]])[1]
+   W = complement(V,U)[1]
+   @test dim(intersect(U,W)[1])==0
+   @test dim(W)==3
+   W0 = sub(V,[])[1]
+   @test complement(V,W0)[1]==V
+   @test complement(V,sub(V,gens(V))[1])[1]==W0
+   v1=V([1,2,3,4,5])
+   v2=V([1,6,0,5,2])
+   @test v1*v2==1
+   B=matrix(F,5,5,[1,2,3,1,0,4,5,2,0,1,3,2,5,4,0,1,6,4,3,5,2,0,4,1,1])
+   @test v1*B == V([ sum([v1[i]*B[i,j] for i in 1:5]) for j in 1:5 ])
+   @test V(transpose(B*v2))==V([ sum([v2[i]*B[j,i] for i in 1:5]) for j in 1:5 ])
+   @test v1*B*v2==(v1*B)*v2
+   @test map(x->x+1,v1)==V([2,3,4,5,6])
+
+end
