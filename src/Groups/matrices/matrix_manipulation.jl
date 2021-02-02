@@ -257,13 +257,6 @@ end
 
 Base.getindex(V::AbstractAlgebra.Generic.FreeModule, i::Int) = gen(V, i)
 
-# this just allows to write V([1,z,0]) instead of V([F(1),z,F(0)])
-function (V::AbstractAlgebra.Generic.FreeModule)(l::Array{T,1}) where T
-   if T<:typeof(base_ring(V)) return V(l)
-   else return V( [base_ring(V)(j) for j in l] )
-   end
-end
-
 # scalar product
 Base.:*(v::AbstractAlgebra.Generic.FreeModuleElem{T},u::AbstractAlgebra.Generic.FreeModuleElem{T}) where T <: FieldElem = (v.v*transpose(u.v))[1]
 

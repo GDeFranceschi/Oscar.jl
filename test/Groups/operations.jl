@@ -106,13 +106,52 @@ end
    W0 = sub(V,[])[1]
    @test complement(V,W0)[1]==V
    @test complement(V,sub(V,gens(V))[1])[1]==W0
+
    v1=V([1,2,3,4,5])
    v2=V([1,6,0,5,2])
    @test v1*v2==1
+   G = GL(5,F)
    B=matrix(F,5,5,[1,2,3,1,0,4,5,2,0,1,3,2,5,4,0,1,6,4,3,5,2,0,4,1,1])
+   @test v1*B == V([ sum([v1[i]*B[i,j] for i in 1:5]) for j in 1:5 ])
+   @test V(transpose(B*v2))==V([ sum([v2[i]*B[j,i] for i in 1:5]) for j in 1:5 ])
+   @test v1*B*v2==(v1*B)*v2
+   B = G(B)
    @test v1*B == V([ sum([v1[i]*B[i,j] for i in 1:5]) for j in 1:5 ])
    @test V(transpose(B*v2))==V([ sum([v2[i]*B[j,i] for i in 1:5]) for j in 1:5 ])
    @test v1*B*v2==(v1*B)*v2
    @test map(x->x+1,v1)==V([2,3,4,5,6])
 
+end
+
+# from file matrices/stuff_field_gen.jl
+@testset "Stuff on fields" begin
+   F = GF(3)
+   R,t = PolynomialRing(F,"t")
+   f = t^2+1
+   f1 = Oscar._change_type(f)
+   @test collect(coefficients(f1))==collect(coefficients(f))
+   F1 = GF(3,1)[1]
+   @test base_ring(f1)==F1
+   x = evaluate(Oscar._centralizer(f1), companion_matrix(f1))
+   @test order(GL(2,F1)(x))==8
+   K,z = FiniteField(f,"z")
+   @test z^4==1
+   @test (change_base_ring(K,Oscar._centralizer(f1))(z))^4 !=1
+   @test primitive_element(K)^4 !=1
+
+   F = GF(17,1)[1]
+   a = F(3)
+   b = F(13)
+   @test a^Oscar._disc_log(a,b)==b
+   @test_throws AssertionError Oscar._disc_log(b,a)
+   @test Oscar._disc_log(F(16),F(1))==0
+   @test_throws AssertionError Oscar._disc_log(b,F(0))
+end
+
+
+@testset "Partitions" begin
+   L=partitions(7)
+   @testset for l in L
+      @test sum(l)==7
+   end
 end
