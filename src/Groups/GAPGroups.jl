@@ -109,7 +109,7 @@ function order(x::Union{GAPGroupElem, GAPGroup})
    return GAP.gap_to_julia(GAP.Globals.Order(x.X))
 end
 
-function order(::Type{T}, x::Union{GAPGroupElem, GAPGroup}) where T<:Number
+function order(::Type{T}, x::Union{GAPGroupElem, GAPGroup}) where T<: Number
    return GAP.gap_to_julia(T, GAP.Globals.Order(x.X))
 end
 
