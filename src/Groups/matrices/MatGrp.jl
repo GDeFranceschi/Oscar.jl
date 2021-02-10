@@ -4,11 +4,13 @@ import GAP: FFE
 
 export
     general_linear_group,
+    mat_elem_type,
     matrix_group,
     MatrixGroup,
     MatrixGroupElem,
     omega_group,
     orthogonal_group,
+    ring_elem_type,
     special_linear_group,
     special_orthogonal_group,
     special_unitary_group,
@@ -286,9 +288,10 @@ end
 Base.in(x::MatElem, G::MatrixGroup) = lies_in(x,G,nothing)[1]
 
 function Base.in(x::MatrixGroupElem, G::MatrixGroup)
-   if isdefined(x,:X) return lies_in(x.elm,G,x.X)[1]
-   else return lies_in(x.elm,G,nothing)[1]
-   end
+   isdefined(x,:X) && return lies_in(x.elm,G,x.X)[1]
+   vero, x_gap = lies_in(x.elm,G,nothing)
+   if x_gap !=nothing x.X = x_gap end
+   return vero
 end
 
 # embedding an element of type MatElem into a group G
