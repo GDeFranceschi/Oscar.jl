@@ -27,6 +27,7 @@ abstract type AbstractMatrixGroupElem <: GAPGroupElem{GAPGroup} end
 """
     MatrixGroup{RE<:RingElem, T<:MatElem{RE}} <: GAPGroup
 Type of groups `G` of `n x n` matrices over the ring `R`, where `n = degree(G)` and `R = base_ring(G)`.
+
 At the moment, only rings of type `FqNmodFiniteField` are supported.
 """
 mutable struct MatrixGroup{RE<:RingElem, T<:MatElem{RE}} <: GAPGroup
@@ -210,9 +211,9 @@ function Base.getproperty(x::MatrixGroupElem, sym::Symbol)
    if isdefined(x,sym) return getfield(x,sym) end
 
    if sym === :X
-      setfield!(x, :X, x.parent.mat_iso(x.elm))
+      x.X = x.parent.mat_iso(x.elm)
    elseif sym == :elm
-      setfield!(x, :elm, x.parent.mat_iso(x.X))
+      x.elm = x.parent.mat_iso(x.X)
    end
    return getfield(x,sym)
 end
@@ -248,7 +249,7 @@ function ==(G::MatrixGroup,H::MatrixGroup)
       return G.descr == H.descr
    end
    if isdefined(G, :gens) && isdefined(H, :gens)
-      if gens(G)==gens(H) return true  end
+      gens(G)==gens(H) && return true
    end
    return G.X==H.X
 end
@@ -300,12 +301,9 @@ function (G::MatrixGroup)(x::MatElem; check=true)
    if check
       vero, x_gap = lies_in(x,G,nothing)
       vero || throw(ArgumentError("Element not in the group"))
-      if x_gap==nothing return MatrixGroupElem(G,x)
-      else return MatrixGroupElem(G,x,x_gap)
-      end
-   else
-      return MatrixGroupElem(G,x)
+      x_gap != nothing && return MatrixGroupElem(G,x,x_gap)
    end
+   return MatrixGroupElem(G,x)
 end
 
 # embedding an element of type MatrixGroupElem into a group G
@@ -423,8 +421,8 @@ Return the trace of `x`.
 trace(x::MatrixGroupElem) = trace(x.elm)
 tr(x::MatrixGroupElem) = tr(x.elm)
 
-order(x::MatrixGroupElem) = ZZ(GAP.Globals.Order(x.X))
-order(::Type{T}, x::MatrixGroupElem)  where T<:Number = T(GAP.Globals.Order(x.X))
+order(::Type{T}, x::MatrixGroupElem)  where T = T(GAP.Globals.Order(x.X))
+order(x::MatrixGroupElem) = order(fmpz, x)
 
 #FIXME for the following functions, the output may not belong to the parent group of x
 #=
@@ -460,24 +458,19 @@ function Base.rand(G::MatrixGroup)
 end
 
 function gens(G::MatrixGroup)
-   isdefined(G,:gens) && return G.gens
-   
-   L = GAP.Globals.GeneratorsOfGroup(G.X)
-   G.gens=[MatrixGroupElem(G,G.mat_iso(L[i]),L[i]) for i in 1:length(L)]
+   if !isdefined(G,:gens)
+      L = GAP.Globals.GeneratorsOfGroup(G.X)
+      G.gens=[MatrixGroupElem(G,G.mat_iso(a),a) for a in L]
+   end
    return G.gens
 end
 
 gen(G::MatrixGroup, i::Int) = gens(G)[i]
-
-Base.getindex(G::MatrixGroup, i::Int) = gen(G, i)
-
 ngens(G::MatrixGroup) = length(gens(G))
 
-function order(G::MatrixGroup)
-   isdefined(G, :order) && return G.order
-
-   G.order = fmpz(BigInt(GAP.Globals.Size(G.X)))
-   return G.order
+function order(::Type{T}, G::MatrixGroup) where T <: Union{Integer,fmpz}
+   if !isdefined(G,:order) G.order = fmpz(BigInt(GAP.Globals.Order(G.X))) end
+   return T(G.order)
 end
 
 ########################################################################
@@ -500,28 +493,15 @@ end
 
 function general_linear_group(n::Int, q::Int)
    (a,b) = ispower(q)
-   if !isprime(b) throw(ArgumentError("The field size must be a prime power")) end
+   isprime(b) || throw(ArgumentError("The field size must be a prime power"))
    return general_linear_group(n, GF(b,a)[1])
-end
-
-function general_linear_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.GL(_gap_filter(T), n, q))
-   elseif T<:MatrixGroup   return general_linear_group(n,q)
-   else throw(ArgumentError("Type not supported"))
-   end
-end
-
-function general_linear_group(::Type{T}, n::Int, F::Ring) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.GL(_gap_filter(T), n, Int(order(F))))
-   elseif T<:MatrixGroup   return general_linear_group(n,F)
-   else throw(ArgumentError("Type not supported"))
-   end
 end
 
 """
     special_linear_group(n::Int, q::Int)
     special_linear_group(n::Int, F::FqNmodFiniteField)
     SL = special_linear_group
+
 Return the special linear group of dimension `n` either over the field `F` or the field `GF(q)`.
 """
 function special_linear_group(n::Int, F::Ring)
@@ -532,24 +512,9 @@ end
 
 function special_linear_group(n::Int, q::Int)
    (a,b) = ispower(q)
-   if !isprime(b) throw(ArgumentError("The field size must be a prime power")) end
+   isprime(b) || throw(ArgumentError("The field size must be a prime power"))
    return special_linear_group(n, GF(b,a)[1])
 end
-
-function special_linear_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.SL(_gap_filter(T), n, q))
-   elseif T<:MatrixGroup   return special_linear_group(n,q)
-   else throw(ArgumentError("Type not supported"))
-   end
-end
-
-function special_linear_group(::Type{T}, n::Int, F::Ring) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.SL(_gap_filter(T), n, Int(order(F))))
-   elseif T<:MatrixGroup   return special_linear_group(n,F)
-   else throw(ArgumentError("Type not supported"))
-   end
-end
-
 
 """
     symplectic_group(n::Int, q::Int)
@@ -566,22 +531,9 @@ end
 
 function symplectic_group(n::Int, q::Int)
    (a,b) = ispower(q)
-   if !isprime(b) throw(ArgumentError("The field size must be a prime power")) end
+
+   isprime(b) || throw(ArgumentError("The field size must be a prime power"))
    return symplectic_group(n, GF(b,a)[1])
-end
-
-function symplectic_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.Sp(_gap_filter(T), n, q))
-   elseif T<:MatrixGroup   return symplectic_group(n,q)
-   else throw(ArgumentError("Type not supported"))
-   end
-end
-
-function symplectic_group(::Type{T}, n::Int, F::Ring) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.Sp(_gap_filter(T), n, Int(order(F))))
-   elseif T<:MatrixGroup   return symplectic_group(n,F)
-   else throw(ArgumentError("Type not supported"))
-   end
 end
 
 """
@@ -611,34 +563,18 @@ end
 
 function orthogonal_group(e::Int, n::Int, q::Int)
    (a,b) = ispower(q)
-   if !isprime(b) throw(ArgumentError("The field size must be a prime power")) end
+   isprime(b) || throw(ArgumentError("The field size must be a prime power"))
    return orthogonal_group(e, n, GF(b,a)[1])
 end
 
 orthogonal_group(n::Int, F::Ring) = orthogonal_group(0,n,F)
 orthogonal_group(n::Int, q::Int) = orthogonal_group(0,n,q)
 
-function orthogonal_group(::Type{T}, e::Int, n::Int, q::Int) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.GO(_gap_filter(T), e, n, q))
-   elseif T<:MatrixGroup   return orthogonal_group(e,n,q)
-   else throw(ArgumentError("Type not supported"))
-   end
-end
-
-function orthogonal_group(::Type{T}, e::Int, n::Int, F::Ring) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.GO(_gap_filter(T), e, n, Int(order(F))))
-   elseif T<:MatrixGroup   return orthogonal_group(e,n,F)
-   else throw(ArgumentError("Type not supported"))
-   end
-end
-
-orthogonal_group(::Type{T}, n::Int, F::Ring) where T<:GAPGroup = orthogonal_group(T,0,n,F)
-orthogonal_group(::Type{T}, n::Int, q::Int) where T<:GAPGroup = orthogonal_group(T,0,n,q)
-
 """
     special_orthogonal_group(e::Int, n::Int, F::Ring)
     special_orthogonal_group(e::Int, n::Int, q::Int)
     SO = special_orthogonal_group
+
 Return the special orthogonal group of dimension `n` either over the field `F` or the field `GF(q)` of type `e`, where `e` in {`+1`,`-1`} for `n` even and `e`=`0` for `n` odd. If `n` is odd, `e` can be omitted.
 """
 function special_orthogonal_group(e::Int, n::Int, F::Ring)
@@ -662,37 +598,24 @@ end
 
 function special_orthogonal_group(e::Int, n::Int, q::Int)
    (a,b) = ispower(q)
-   if !isprime(b) throw(ArgumentError("The field size must be a prime power")) end
+
+   isprime(b) || throw(ArgumentError("The field size must be a prime power"))
    return special_orthogonal_group(e, n, GF(b,a)[1])
 end
 
 special_orthogonal_group(n::Int, F::Ring) = special_orthogonal_group(0,n,F)
 special_orthogonal_group(n::Int, q::Int) = special_orthogonal_group(0,n,q)
 
-function special_orthogonal_group(::Type{T}, e::Int, n::Int, q::Int) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.SO(_gap_filter(T), e, n, q))
-   elseif T<:MatrixGroup   return special_orthogonal_group(e,n,q)
-   else throw(ArgumentError("Type not supported"))
-   end
-end
-
-function special_orthogonal_group(::Type{T}, e::Int, n::Int, F::Ring) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.SO(_gap_filter(T), e, n, Int(order(F))))
-   elseif T<:MatrixGroup   return special_orthogonal_group(e,n,F)
-   else throw(ArgumentError("Type not supported"))
-   end
-end
-
-special_orthogonal_group(::Type{T}, n::Int, F::Ring) where T<:GAPGroup = special_orthogonal_group(T,0,n,F)
-special_orthogonal_group(::Type{T}, n::Int, q::Int) where T<:GAPGroup = special_orthogonal_group(T,0,n,q)
 
 """
     omega_group(e::Int, n::Int, q::Int)
+
 Return the Omega group of dimension `n` over the field `GF(q)` of type `e`, where `e` in {`+1`,`-1`} for `n` even and `e`=`0` for `n` odd. If `n` is odd, `e` can be omitted.
 """
 function omega_group(e::Int, n::Int, q::Int)
    (a,b) = ispower(q)
-   if !isprime(b) throw(ArgumentError("The field size must be a prime power")) end
+
+   isprime(b) || throw(ArgumentError("The field size must be a prime power"))
    if e==1
       iseven(n) || throw(ArgumentError("The dimension must be even"))
       G = MatrixGroup(n,GF(b,a)[1])
@@ -720,38 +643,29 @@ Return the unitary group of dimension `n` over the field `GF(q^2)`.
 """
 function unitary_group(n::Int, q::Int)
    (a,b) = ispower(q)
-   if !isprime(b) throw(ArgumentError("The field size must be a prime power")) end
+
+   isprime(b) || throw(ArgumentError("The field size must be a prime power"))
    G = MatrixGroup(n,GF(b,2*a)[1])
    G.descr = :GU
    return G
 end
 
-function unitary_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.GU(_gap_filter(T), n, q))
-   elseif T<:MatrixGroup   return unitary_group(n,q)
-   else throw(ArgumentError("Type not supported"))
-   end
-end
 
 """
     special_unitary_group(n::Int, q::Int)
     SU = special_unitary_group
+
 Return the special unitary group of dimension `n` over the field `GF(q^2)`.
 """
 function special_unitary_group(n::Int, q::Int)
    (a,b) = ispower(q)
-   if !isprime(b) throw(ArgumentError("The field size must be a prime power")) end
+
+   isprime(b) || throw(ArgumentError("The field size must be a prime power"))
    G = MatrixGroup(n,GF(b,2*a)[1])
    G.descr = :SU
    return G
 end
 
-function special_unitary_group(::Type{T}, n::Int, q::Int) where T <: GAPGroup
-   if T<:PermGroup   return T(GAP.Globals.SU(_gap_filter(T), n, q))
-   elseif T<:MatrixGroup   return special_unitary_group(n,q)
-   else throw(ArgumentError("Type not supported"))
-   end
-end
 
 const GL = general_linear_group
 const SL = special_linear_group
@@ -765,6 +679,7 @@ const SU = special_unitary_group
 """
     matrix_group(V::T...) where T<:MatrixGroup
     matrix_group(V::AbstractVector{T}) where T<:MatrixGroup
+
 Return the matrix group generated by elements in the vector `V`.
 """
 function matrix_group(V::AbstractVector{T}) where T<:Union{MatElem,MatrixGroupElem}
@@ -788,7 +703,8 @@ matrix_group(V::T...) where T<:Union{MatElem,MatrixGroupElem} = matrix_group(col
 function sub(G::MatrixGroup, elements::Vector{S}) where S <: GAPGroupElem
    @assert elem_type(G) == S
    elems_in_GAP = GAP.julia_to_gap(GapObj[x.X for x in elements])
-   H = GAP.Globals.Group(elems_in_GAP)
+
+   H = GAP.Globals.Subgroup(G.X,elems_in_GAP)
    #H is the group. I need to return the inclusion map too
    K,f = _as_subgroup(G, H)
    L = Vector{MatrixGroupElem}(undef, length(elements))
@@ -867,3 +783,4 @@ function Base.rand(C::GroupConjClass{S,T}) where S<:MatrixGroup where T<:MatrixG
    H.X = GAP.Globals.Random(C.CC)
    return H
 end
+
