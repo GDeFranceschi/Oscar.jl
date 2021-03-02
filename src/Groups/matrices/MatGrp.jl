@@ -112,7 +112,16 @@ MatrixGroupElem(G::MatrixGroup{RE,T}, x::T, x_gap::GapObj) where {RE,T} = Matrix
 MatrixGroupElem(G::MatrixGroup{RE,T}, x::T) where {RE, T} = MatrixGroupElem{RE,T}(G,x)
 MatrixGroupElem(G::MatrixGroup{RE,T}, x_gap::GapObj) where {RE, T} = MatrixGroupElem{RE,T}(G,x_gap)
 
+"""
+    ring_elem_type(::Type{MatrixGroup{S,T}})
+Return the ring element type `S`.
+"""
 ring_elem_type(::Type{MatrixGroup{S,T}}) where {S,T} = S
+
+"""
+    mat_elem_type(::Type{MatrixGroup{S,T}})
+Return the matrix element type `T`.
+"""
 mat_elem_type(::Type{MatrixGroup{S,T}}) where {S,T} = T
 _gap_filter(::Type{<:MatrixGroup}) = GAP.Globals.IsMatrixGroup
 
