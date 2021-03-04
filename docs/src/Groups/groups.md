@@ -317,6 +317,82 @@ Of course, the matrices in the vector `V` must have the same base ring and the s
     The line `matrix_group(V)` is equivalent to `sub(GL(n,q),V)[1]`.
 
 
+### Methods on matrix groups
+
+The following methods are peculiarly available for matrix groups:
+```@docs
+base_ring(G::MatrixGroup)
+degree(G::MatrixGroup)
+```
+  **Example:**
+```jldoctest
+julia> G=GL(4,4);
+julia> degree(G)
+4
+julia> base_ring(G)
+Finite field of degree 2 over F_2
+```
+
+### Elements of matrix groups
+
+If `G` is a matrix group and `x` is either a matrix of type `MatElem{T}` or an element of another matrix group, it is possible to embed `x` into the matrix group `G` by typing `G(x)`.
+```@repl oscar
+F = GF(5,1)[1];
+G = GL(3,F);
+x = matrix(F,3,3,[1,2,0,0,1,4,0,0,1]);
+G(x)
+typeof(x)
+typeof(G(x))
+S = SL(3,F);
+S(x)
+S(G(x))
+```
+The operation `G(matrix(F,n,n,L))` can be abbreviated in `G(L)`. This allows to write down quickly an explicit element in a matrix group.
+```jldoctest
+julia> F = GF(3,1)[1];
+julia> G = GL(3,F);
+julia> G(matrix(F,3,3,[1,2,0,0,1,4,0,0,1]))==G([1,2,0,0,1,4,0,0,1])
+true
+```
+Of course, the embedding `G(x)` returns an error whenever the matrix `x` does not belong to the group `G`. Also the line `x in G` returns an affirmative answer if `x` has type `MatElem`, but it lies in the group `G`, as shown below:
+```jldoctest
+julia> F=GF(3,1)[1];
+julia> S=SL(2,F);
+julia> G=GL(2,F);
+julia> x=matrix(F,2,2,[1,0,0,2]);
+julia> x in G
+true
+julia> x in S
+false
+```
+
+If `x` is a `MatrixGroupElem{S,T}`, typing `matrix(x)` we get back the matrix of `x` of type `T`; somehow, the function `x -> matrix(x)` is a sort of inverse of `x -> G(x)`.
+```jldoctest
+julia> x = rand(GL(3,5));
+julia> typeof(x)
+MatrixGroupElem{fq_nmod,fq_nmod_mat}
+julia> typeof(matrix(x))
+fq_nmod_mat
+```
+
+
+### Methods and operations on elements
+
+Many methods available for matrices can be computed in matrix group elements, such as `det`, `base_ring`, `nrows`, `trace`, `tr`. If `x` is a `MatrixGroupElem`, evaluating these functions in `x` is the same of evaluating them in `matrix(x)`.
+
+The operations on group elements are available for matrix group elements too: `*`, `^`, `inv`, `comm`. Binary operations are allowed also between elements with different parent groups, as long as the degree and the base ring is the same (otherwise, an error is returned). Whenever a binary operation involves elements with different parent groups, the parent of the output is set by default as `GL(n,F)`, where `n` and `F` are the common degree and base ring respectively.
+
+  **Example:**
+```jldoctest
+julia> O=GO(1,4,3);
+julia> S=SL(4,3);
+julia> x=O([1,0,0,0,0,1,0,0,0,0,2,0,0,0,0,1])
+julia> y=S[1];
+julia> parent(x*y)
+GL(4,3)
+julia> x*y in S, x*y in O
+(false, false)
+```
 
 ## Homomorphisms
 
